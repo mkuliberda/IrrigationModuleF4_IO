@@ -58,7 +58,7 @@ public:
 		id(_id)
 	{
 		name.shrink_to_fit();
-		plant_type_t p_type = plant_only;
+		p_type = plant_only;
 	}
 
 	Plant(const std::string&& _name, const uint8_t&& _id) :
@@ -66,7 +66,7 @@ public:
 		id(std::move(_id))
 	{
 		name.shrink_to_fit();
-		plant_type_t p_type = plant_only;
+		p_type = plant_only;
 	}
 
 	~Plant()

@@ -51,7 +51,7 @@
 /*! DS18B20 class implementation */
 /***********************************/
 
-class DS18B20{
+class DS18B20_HAL{
 
 private:
 
@@ -61,7 +61,7 @@ private:
 	double							conversiontimeSeconds;
 	bool							conversionRunning;
 	float							temperatureCelsius;
-	uint8_t							ROM[8];
+	uint8_t							ROM[8] = {0,0,0,0,0,0,0,0};
 
 	void 							delay_us (const uint32_t & _us);
 	void							conversiontimeIncrease(const double & _dt);
@@ -82,11 +82,13 @@ private:
 
 public:
 
-	DS18B20():
+	DS18B20_HAL():
 		valid(false),
+		gpio({nullptr, 0}),
+		ptimer(nullptr),
 		conversiontimeSeconds(0),
 		conversionRunning(false),
-		temperatureCelsius(-1000)
+		temperatureCelsius(-1000.0)
 	{};
 
 	bool& 							init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle);

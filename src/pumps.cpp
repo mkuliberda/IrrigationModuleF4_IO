@@ -213,7 +213,7 @@ double Pump::getIdletimeSeconds(void) const {
 
 bool DRV8833DcPumpImp::init(const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
 	const std::array<struct gpio_s, 2>& _pinout, const struct gpio_s& _led_pinout, \
-	const struct gpio_s& _fault_pinout, const struct gpio_s& _mode_pinout) {
+	const struct gpio_s& _fault_pinout, const struct gpio_s& _mode_pinout){
 
 	bool success = true;
 

@@ -102,7 +102,7 @@ protected:
 	struct gpio_s 							pinout;
 };
 
-class DS18B20TemperatureSensorImp : public SensorImp, public DS18B20{
+class DS18B20TemperatureSensorImp : public SensorImp, public DS18B20_HAL{
 public:
 	DS18B20TemperatureSensorImp(const struct gpio_s& _pinout, TIM_HandleTypeDef* _tim_baseHandle, const sensor_type_t& _type = sensor_type_t::temperature_sensor) : SensorImp(_type) {
 		sensor_type = _type;

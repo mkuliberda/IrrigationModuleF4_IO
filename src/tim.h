@@ -17,8 +17,8 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __tim_H
-#define __tim_H
+#ifndef TIM_H
+#define TIM_H
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -47,7 +47,7 @@ void MX_TIM7_Init(void);
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ tim_H */
+#endif /*TIM_H */
 
 /**
   * @}

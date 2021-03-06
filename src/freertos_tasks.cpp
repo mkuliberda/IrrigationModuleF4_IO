@@ -67,9 +67,20 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   /* place for user code */
 }
 
-uint16_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const uint8_t &_maxlen)
+uint8_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const uint8_t &_maxlen)
 {
-	uint16_t retval = 0x00;
+	std::bitset<8> errcode;
+	/*******errcode**********
+	 * 00000000
+	 * ||||||||->(0) 1 if msg was too long and had to be shortened
+	 * |||||||-->(1) 1 if osMailPut was unsuccessfull
+	 * ||||||--->(2) 1 if
+	 * |||||---->(3) 1 if
+	 * ||||----->(4) 1 if
+	 * |||------>(5) 1 if
+	 * ||------->(6) 1 if
+	 * |-------->(7) 1 if
+	 *************************/
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
 
@@ -89,16 +100,18 @@ uint16_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const repor
 	msg_txt.shrink_to_fit();
 	if (msg_txt.length() >= _maxlen){
 		msg_txt = msg_txt.substr(msg_txt.length() - _maxlen + 1, _maxlen - 1);
-		retval = 0x0001;
+		errcode.set(0, true);
 	}
 	msg->reporter_id = _reporter;
 	msg->len = msg_txt.length() + 1;
 	msg_txt.copy(msg->text, msg_txt.length(), 0);
 	msg->text[MINIMUM((std::size_t)(_maxlen - 1), msg_txt.length())] = '\0';
 
-	retval = osMailPut(mail_box, msg) != osOK ? 0x0002 : 0x0000;
+	if (osMailPut(mail_box, msg) != osOK){
+		errcode.set(1, true);
+	}
 
-	return retval;
+	return static_cast<uint8_t>(errcode.to_ulong());
 }
 
 osEvent updateSectorsActivities(Scheduler *schedule, osMailQId &mail_box)
@@ -136,7 +149,7 @@ osEvent updateSectorsActivities(Scheduler *schedule, osMailQId &mail_box)
 osEvent updateSectorsExceptions(Scheduler *schedule, osMailQId &mail_box)
 {
 	osEvent evt;
-	exception_msg *msg;
+	exception_msg *msg = nullptr;
 
 	do{
 		evt = osMailGet(mail_box, 1);
@@ -279,7 +292,7 @@ void SDCardTask(void const *argument)
     FIL log_file;
 	FIL schedule_file;
 	//UINT bytesCnt= 0;
-	char logical_drive[4];   /* SD logical drive path */
+	char logical_drive[4] = {0, 0, 0, 0};   /* SD logical drive path */
 	FATFS file_system;    /* File system object for SD logical drive */
 	DIR directory;
 	FILINFO file_info;
@@ -288,14 +301,14 @@ void SDCardTask(void const *argument)
 	const std::array<std::string, 4> schedule_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
 	Scheduler schedule = Scheduler("PARSER");
 	bool mount_success = false;
-	activity_msg *activity;
+	activity_msg *activity = nullptr;
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
-	exception_msg *exception;
+	exception_msg *exception = nullptr;
 	exceptions_box = osMailCreate(osMailQ(exceptions_box), osThreadGetId());
 	osEvent evt;
-	log_msg *sys_message;
-	log_msg *irg_message;
-	log_msg *wls_message;
+	log_msg *sys_message = nullptr;
+	log_msg *irg_message = nullptr;
+	log_msg *wls_message = nullptr;
 
 
 	HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);

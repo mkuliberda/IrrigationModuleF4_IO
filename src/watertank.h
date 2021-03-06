@@ -19,17 +19,17 @@ inline double operator"" _l(long double l) {
 	return l;
 }
 inline double operator"" _ml(long double ml) {
-	return ml / 1000;
+	return ml / 1000.0;
 }
 
 inline double operator"" _m(long double m) {
 	return m;
 }
 inline double operator"" _cm(long double cm) {
-	return cm / 100;
+	return cm / 100.0;
 }
 inline double operator"" _mm(long double mm) {
-	return mm / 1000;
+	return mm / 1000.0;
 }
 
 inline double operator"" _Ce(long double c) {
@@ -37,7 +37,7 @@ inline double operator"" _Ce(long double c) {
 }
 
 inline double operator"" _F(long double f) {
-	return (f - 32) * 5 / 9;
+	return (f - 32.0) * 5.0/ 9.0;
 }
 
 inline double operator"" _K(long double k) {

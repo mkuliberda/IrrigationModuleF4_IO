@@ -12,12 +12,12 @@
 /******************************************/
 
 /* delay in microseconds */
-void DS18B20::delay_us (const uint32_t & _us){
+void DS18B20_HAL::delay_us (const uint32_t & _us){
 	this->ptimer->Instance->CNT = 0;
 	while (this->ptimer->Instance->CNT <= _us);
 }
 
-bool& DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
+bool& DS18B20_HAL::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHandle){
 
 	this->valid = false;
 	this->ptimer = _tim_baseHandle;
@@ -40,38 +40,38 @@ bool& DS18B20::init(const struct gpio_s & _gpio, TIM_HandleTypeDef* _tim_baseHan
 	return this->valid;
 }
 
-void DS18B20::conversiontimeIncrease(const double & _dt){
+void DS18B20_HAL::conversiontimeIncrease(const double & _dt){
 	this->conversiontimeSeconds += _dt;
 }
 
-double& DS18B20::conversiontimeGet(void){
+double& DS18B20_HAL::conversiontimeGet(void){
 	return this->conversiontimeSeconds;
 }
 
-void DS18B20::conversiontimeReset(void){
-	this->conversiontimeSeconds = 0;
+void DS18B20_HAL::conversiontimeReset(void){
+	this->conversiontimeSeconds = 0.0;
 }
 
-void DS18B20::conversionStart(void){
+void DS18B20_HAL::conversionStart(void){
 
 	this->conversiontimeReset();
 	this->OneWire_WriteByte(DS18B20_CMD_CONVERTTEMP);
 	this->conversionflagSet();
 }
 
-void DS18B20::conversionflagSet(void){
+void DS18B20_HAL::conversionflagSet(void){
 	this->conversionRunning = true;
 }
 
-bool& DS18B20::conversionflagGet(void){
+bool& DS18B20_HAL::conversionflagGet(void){
 	return this->conversionRunning;
 }
 
-void DS18B20::conversionflagReset(void){
+void DS18B20_HAL::conversionflagReset(void){
 	this->conversionRunning = false;
 }
 
-void DS18B20::gpioSetInput (void){
+void DS18B20_HAL::gpioSetInput (void){
 
 	GPIO_InitTypeDef GPIO_InitStruct;
 	GPIO_InitStruct.Pin = this->gpio.pin;
@@ -82,7 +82,7 @@ void DS18B20::gpioSetInput (void){
 }
 
 
-void DS18B20::gpioSetOutput (void){
+void DS18B20_HAL::gpioSetOutput (void){
 
 	GPIO_InitTypeDef GPIO_InitStruct;
 	GPIO_InitStruct.Pin = this->gpio.pin;
@@ -92,7 +92,7 @@ void DS18B20::gpioSetOutput (void){
 	HAL_GPIO_Init(this->gpio.port, &GPIO_InitStruct);
 }
 
-inline uint8_t DS18B20::OneWire_Reset(void)
+inline uint8_t DS18B20_HAL::OneWire_Reset(void)
 {
 	/* Line low, and wait 480us */
 	HAL_GPIO_WritePin (this->gpio.port, this->gpio.pin, GPIO_PIN_RESET);
@@ -116,7 +116,7 @@ inline uint8_t DS18B20::OneWire_Reset(void)
 	}
 }
 
-inline void DS18B20::OneWire_WriteBit(const uint8_t & _bit)
+inline void DS18B20_HAL::OneWire_WriteBit(const uint8_t & _bit)
 {
 	if (_bit)
 	{
@@ -149,7 +149,7 @@ inline void DS18B20::OneWire_WriteBit(const uint8_t & _bit)
 
 }
 
-inline uint8_t DS18B20::OneWire_ReadBit(void)
+inline uint8_t DS18B20_HAL::OneWire_ReadBit(void)
 {
 	uint8_t bit = 0;
 
@@ -175,7 +175,7 @@ inline uint8_t DS18B20::OneWire_ReadBit(void)
 	return bit;
 }
 
-void DS18B20::OneWire_WriteByte(uint8_t byte) {
+void DS18B20_HAL::OneWire_WriteByte(uint8_t byte) {
 	uint8_t i = 8;
 	/* Write 8 bits */
 	while (i--) {
@@ -185,7 +185,7 @@ void DS18B20::OneWire_WriteByte(uint8_t byte) {
 	}
 }
 
-uint8_t DS18B20::OneWire_ReadByte(void) {
+uint8_t DS18B20_HAL::OneWire_ReadByte(void) {
 	uint8_t i = 8, byte = 0;
 	while (i--) {
 		byte >>= 1;
@@ -195,7 +195,7 @@ uint8_t DS18B20::OneWire_ReadByte(void) {
 	return byte;
 }
 
-uint8_t DS18B20::OneWire_CRC8(uint8_t *addr, uint8_t len) {
+uint8_t DS18B20_HAL::OneWire_CRC8(uint8_t *addr, uint8_t len) {
 	uint8_t crc = 0, inbyte, i, mix;
 
 	while (len--) {
@@ -214,11 +214,11 @@ uint8_t DS18B20::OneWire_CRC8(uint8_t *addr, uint8_t len) {
 	return crc;
 }
 
-bool& DS18B20::isValid(void){
+bool& DS18B20_HAL::isValid(void){
 	return this->valid;
 }
 
-float& DS18B20::readTemperatureCelsius(const double & _dt){
+float& DS18B20_HAL::readTemperatureCelsius(const double & _dt){
 
 	uint16_t temperature;
 	uint8_t resolution;
@@ -286,28 +286,30 @@ float& DS18B20::readTemperatureCelsius(const double & _dt){
 				case 9:
 					decimal = (temperature >> 3) & 0x01;
 					decimal *= (float)DS18B20_DECIMAL_STEPS_9BIT;
-				break;
+					break;
 				case 10:
 					decimal = (temperature >> 2) & 0x03;
 					decimal *= (float)DS18B20_DECIMAL_STEPS_10BIT;
-				 break;
+					break;
 				case 11:
 					decimal = (temperature >> 1) & 0x07;
 					decimal *= (float)DS18B20_DECIMAL_STEPS_11BIT;
-				break;
+					break;
 				case 12:
 					decimal = temperature & 0x0F;
 					decimal *= (float)DS18B20_DECIMAL_STEPS_12BIT;
-				 break;
+					break;
 				default:
 					decimal = 0xFF;
 					digit = 0;
+					break;
 			}
 
 			/* Check for negative part */
 			decimal = digit + decimal;
-			if (minus)
+			if (minus) {
 				decimal = 0 - decimal;
+			}
 
 			this->temperatureCelsius = decimal;
 		}

@@ -1,6 +1,6 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __freertos_memory_H
-#define __freertos_memory_H
+#ifndef FREERTOS_MEMORY_H
+#define FREERTOS_MEMORY_H
 
 
 #include "cmsis_os.h"
@@ -12,4 +12,4 @@ void *operator new[](size_t size);
 void operator delete(void *p) noexcept;
 void operator delete[](void *p) noexcept;
 
-#endif //__freertos_memory_H
+#endif //FREERTOS_MEMORY_H
