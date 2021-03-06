@@ -23,7 +23,7 @@ enum plant_type_t: uint8_t {
 struct PlantInfo_s{
 	uint8_t			id;
 	plant_type_t	p_type;
-	bool			rain_exposed = true;
+	bool			rain_exposed;
 	float			soil_moisture_percent;
 	char			name[20];
 };
@@ -46,24 +46,26 @@ public:
 class Plant : public PlantInterface {
 private:
 
-	plant_type_t									p_type;
+	plant_type_t									p_type = plant_type_t::plant_only;
 	std::string										name;
 	float											soil_moisture_percent = -1000;
 	uint8_t											id;
-	bool											rain_exposed = true;
+	bool											rain_exposed;
 
 public:
-	Plant(const std::string& _name, const uint8_t& _id) :
+	Plant(const std::string& _name, const uint8_t& _id, const bool& _rain_exposed) :
 		name(_name),
-		id(_id)
+		id(_id),
+		rain_exposed(_rain_exposed)
 	{
 		name.shrink_to_fit();
 		p_type = plant_only;
 	}
 
-	Plant(const std::string&& _name, const uint8_t&& _id) :
+	Plant(const std::string&& _name, const uint8_t&& _id, const bool&& _rain_exposed) :
 		name(std::move(_name)),
-		id(std::move(_id))
+		id(std::move(_id)),
+		rain_exposed(std::move(_rain_exposed))
 	{
 		name.shrink_to_fit();
 		p_type = plant_only;

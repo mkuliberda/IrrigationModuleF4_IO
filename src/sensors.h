@@ -46,9 +46,9 @@ public:
 	virtual bool						isValid() const;
 	virtual float						getMountHeightMeters() const;
 protected:
-	sensor_type_t						sensor_type;
-	bool								valid;
-	float 								mount_height_meters;
+	sensor_type_t						sensor_type = sensor_type_t::generic_sensor;
+	bool								valid = false;
+	float 								mount_height_meters = 0.0;
 
 };
 
