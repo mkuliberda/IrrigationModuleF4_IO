@@ -4,7 +4,7 @@
 
 
 #include "scheduler.h"
-#include <algorithm>
+#include "plants.h"
 
 #ifdef __cplusplus
  extern "C" {
@@ -43,6 +43,13 @@ struct activity_msg{
 struct exception_msg{
 	uint8_t sector_nbr;
 	exception_s exception;
+};
+
+struct plant_msg{
+	char	name[PLANT_NAME_LEN] = "";
+	uint8_t sector_nbr;
+	bool	rain_exposed;
+	uint8_t type;
 };
 
 struct log_time{

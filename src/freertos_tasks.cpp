@@ -2,14 +2,14 @@
 #include "freertos_tasks.h"
 #include "freertos_memory.h"
 //#include "printf_retarget.h"
+#include <array>
+#include <cstring>
+#include "utilities.h"
+#include <algorithm>
 #include "watertank.h"
 #include "pumps.h"
 #include "sector.h"
 #include "sensors.h"
-#include "plants.h"
-#include <array>
-#include <cstring>
-#include "utilities.h"
 
 
 osThreadId SysMonitorTaskHandle;
@@ -21,6 +21,8 @@ osMailQId activities_box;
 osMailQDef(activities_box, 42, activity_msg);
 osMailQId exceptions_box;
 osMailQDef(exceptions_box, 6, exception_msg);
+osMailQId plants_box;
+osMailQDef(plants_box, 20, plant_msg);
 osMailQId sys_logs_box;
 osMailQDef(sys_logs_box, 10, log_msg);
 osMailQId irg_logs_box;
@@ -67,7 +69,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   /* place for user code */
 }
 
-uint8_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const uint8_t &_maxlen)
+uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const uint8_t &_maxlen)
 {
 	std::bitset<8> errcode;
 	/*******errcode**********
@@ -87,8 +89,7 @@ uint8_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const report
 	HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 	HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 
-	log_msg *msg = nullptr;
-	msg = (log_msg*)osMailAlloc(mail_box, osWaitForever);
+	log_msg *msg = (log_msg*)osMailAlloc(mail_box, osWaitForever);
 
 	msg->time.day = rtc_date.Date;
 	msg->time.hours = rtc_time.Hours;
@@ -97,7 +98,6 @@ uint8_t publishLogMessage(std::string msg_txt, osMailQId &mail_box, const report
 	msg->time.seconds = rtc_time.Seconds;
 	msg->time.year = rtc_date.Year;
 
-	msg_txt.shrink_to_fit();
 	if (msg_txt.length() >= _maxlen){
 		msg_txt = msg_txt.substr(msg_txt.length() - _maxlen + 1, _maxlen - 1);
 		errcode.set(0, true);
@@ -252,28 +252,24 @@ void SysMonitorTask(void const * argument)
     	min_heap_size = xPortGetMinimumEverFreeHeapSize();
     	if (min_heap_size != prev_min_heap_size){
     		prev_min_heap_size = min_heap_size;
-    		std::string msg = "Min HEAP size:" + patch::to_string(min_heap_size) + "b";
-    		msg.shrink_to_fit();
+    		std::string_view msg = "Min HEAP size:" + patch::to_string(min_heap_size) + "b";
     		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
     	}
     	vTaskGetInfo(SDCardTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != SDCardPrevStackHighWaterMark){
-    		std::string msg =  "SDCardTask HWMark:" + patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
-    		msg.shrink_to_fit();
+    		std::string_view msg =  "SDCardTask HWMark:" + patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		SDCardPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
     	}
     	vTaskGetInfo(WirelessCommTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != WirelessCommPrevStackHighWaterMark){
-    		std::string msg =  "WlsCom HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
-    		msg.shrink_to_fit();
+    		std::string_view msg =  "WlsCom HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		WirelessCommPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
     	}
     	vTaskGetInfo(IrrigationControlTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != IrrigationControlPrevStackHighWaterMark){
-    		std::string msg =  "IrrCtrl HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
-    		msg.shrink_to_fit();
+    		std::string_view msg =  "IrrCtrl HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
     	}
@@ -290,7 +286,7 @@ void SDCardTask(void const *argument)
 
 	const char log_filename[] = "LOG.TXT";
     FIL log_file;
-	FIL schedule_file;
+	FIL config_file;
 	//UINT bytesCnt= 0;
 	char logical_drive[4] = {0, 0, 0, 0};   /* SD logical drive path */
 	FATFS file_system;    /* File system object for SD logical drive */
@@ -298,13 +294,15 @@ void SDCardTask(void const *argument)
 	FILINFO file_info;
 	char cwd_buffer[80] = "/";
 
-	const std::array<std::string, 4> schedule_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
-	Scheduler schedule = Scheduler("PARSER");
+	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
+	//Scheduler schedule = Scheduler("PARSER");
 	bool mount_success = false;
 	activity_msg *activity = nullptr;
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
 	exception_msg *exception = nullptr;
 	exceptions_box = osMailCreate(osMailQ(exceptions_box), osThreadGetId());
+	plant_msg *plant = nullptr;
+	plants_box = osMailCreate(osMailQ(plants_box), osThreadGetId());
 	osEvent evt;
 	log_msg *sys_message = nullptr;
 	log_msg *irg_message = nullptr;
@@ -345,30 +343,39 @@ void SDCardTask(void const *argument)
 					break;
 				}
 
-				for(auto const &file: schedule_file_candidates){
+				for(auto const &file: config_file_candidates){
 
 					std::string sdcard_sched_filename(file_info.fname);
 
 					if (file == sdcard_sched_filename){
 						uint8_t sector_nbr = atoi(sdcard_sched_filename.substr(6,1).c_str()) - 1;
 						/* Open a text file */
-						if (f_open(&schedule_file, file_info.fname, FA_READ) == FR_OK){
-							char schedule_line[43] = "";
-							while (f_gets(schedule_line, sizeof(schedule_line), &schedule_file)){
-								if(schedule_line[0] == 'A'){
+						if (f_open(&config_file, file_info.fname, FA_READ) == FR_OK){
+							char config_line[43] = "";
+							while (f_gets(config_line, sizeof(config_line), &config_file)){
+								if(config_line[0] == 'A'){
 									activity = (activity_msg*)osMailAlloc(activities_box, osWaitForever);
 									activity->sector_nbr = sector_nbr;
-									activity->activity = schedule.parseActivity(schedule_line);
+									activity->activity = Scheduler::parseActivity(config_line);
 									while (osMailPut(activities_box, activity) != osOK);
 								}
-								else if(schedule_line[0] == 'E'){
+								else if(config_line[0] == 'E'){
 									exception = (exception_msg*)osMailAlloc(exceptions_box, osWaitForever);
 									exception->sector_nbr = sector_nbr;
-									exception->exception = schedule.parseException(schedule_line);
+									exception->exception = Scheduler::parseException(config_line);
 									while (osMailPut(exceptions_box, exception) != osOK);
 								}
+								else if(config_line[0] == 'P'){	//format P:Y,1,Pelargonia...
+									plant = (plant_msg*)osMailAlloc(plants_box, osWaitForever);
+									plant->sector_nbr = sector_nbr;
+									const std::string str(config_line);
+									plant->rain_exposed = str.substr(2,1) == "Y" ? true : false;
+									plant->type = atoi(str.substr(4,1).c_str());
+									str.copy(plant->name, MINIMUM(str.length() - 6, PLANT_NAME_LEN-1), 6);
+									while (osMailPut(plants_box, plant) != osOK);
+								}
 							}
-							while (f_close(&schedule_file) != FR_OK);
+							while (f_close(&config_file) != FR_OK);
 						}
 						else{
 							HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
@@ -476,6 +483,8 @@ void WirelessCommTask(void const *argument)
 void IrrigationControlTask(void const *argument){
 
 	irg_logs_box = osMailCreate(osMailQ(irg_logs_box), osThreadGetId());
+	osEvent evt;
+	plant_msg *msg = nullptr;
 
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
@@ -485,15 +494,49 @@ void IrrigationControlTask(void const *argument){
 	Scheduler sector_schedule[SECTORS_AMOUNT] = {Scheduler("SECTOR1"), Scheduler("SECTOR2"), Scheduler("SECTOR3"), Scheduler("SECTOR4")};
 	uint8_t activities_cnt[SECTORS_AMOUNT]={0,0,0,0};
 	uint8_t exceptions_cnt[SECTORS_AMOUNT]={0,0,0,0};
-
-	//PlantInterface *PlantWithDMAMoistureSensor1 = new PlantWithDMAMoistureSensor(new Plant("Pelargonia", 0), 3.3, 4095);
-	//PlantInterface *PlantWithDMAMoistureSensor2 = new PlantWithDMAMoistureSensor(new Plant("Kroton", 0), 3.3, 4095);
-
-	std::vector<Scheduler> vect(3, (Scheduler("SECTOR1"), Scheduler("SECTOR2"), Scheduler("SECTOR3")));
+	uint16_t plants_cnt = 0;
 
 	osDelay(1000);
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation, LOG_TEXT_LEN);
+
+	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder; //leave as pointer to delete when not needed anymore
+	sector_builder->producePlantWithDMAMoistureSensor("Pelargonia1", true)
+					.producePlantWithDMAMoistureSensor("Kroton1", false)
+					.producePlantWithDMAMoistureSensor("Kroton2", true)
+					.producePlantWithDMAMoistureSensor("Truskawka1", true)
+					.producePlantWithDMAMoistureSensor("Truskawka2", true)
+					;
+
+	//sector_builder->produceDRV8833PumpWithController(pump_controller_mode_t::external, 60, 300, pump1gpio, pump1led, pump1fault, pump1mode);
+	std::unique_ptr<IrrigationSector>(p_sector1);
+	p_sector1 = sector_builder->GetProduct();
+
+	delete sector_builder;
+
+	do{
+		evt = osMailGet(plants_box, 1);
+		if (evt.status == osEventMail){
+			msg = (plant_msg*)evt.value.p;
+			switch (msg->sector_nbr){
+			case 0:
+				//schedule[0].addException(msg->exception);
+				break;
+			case 1:
+				//schedule[1].addException(msg->exception);
+				break;
+			case 2:
+				//schedule[2].addException(msg->exception);
+				break;
+			case 3:
+				//schedule[3].addException(msg->exception);
+				break;
+			default:
+				break;
+			}
+		}
+		osMailFree(plants_box, msg);
+	}while(evt.status == osEventMail);
 
 
 
@@ -530,7 +573,6 @@ void IrrigationControlTask(void const *argument){
 			exceptions_cnt[s_nbr] = sector_schedule[s_nbr].getExceptionsCount();
 			}
 		}
-
 
 		//Placeholder for rest of the code
 

@@ -367,8 +367,6 @@ exception_s Scheduler::parseException(const char *_line){
 }
 
 
-
-
-
-
-
+const std::string_view& Scheduler::getName() const {
+    return name;
+}

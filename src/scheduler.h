@@ -57,7 +57,7 @@ class Scheduler{
 private:
 	std::vector<activity_s> 				vActivities;
 	std::vector<exception_s> 				vExceptions;
-	const std::string						name;
+	const std::string_view					name;
 	bool									is_active;
 	bool									is_available;
 	const uint8_t							activities_limit;
@@ -66,7 +66,7 @@ private:
 
 
 public:
-	Scheduler(const std::string &_name, uint8_t _activities_limit = 255, uint8_t _exceptions_limit = 40):
+	Scheduler(const std::string_view &_name, uint8_t _activities_limit = 255, uint8_t _exceptions_limit = 40):
 	name(_name),
 	is_active(false),
 	is_available(false),
@@ -74,6 +74,7 @@ public:
 	exceptions_limit(_exceptions_limit)
 	{};
 
+	const std::string_view& 				getName() const;
 	bool& 									update(const TimeStamp_t &_timestamp);
 	bool& 									isActive(void);
 	bool 									isExceptionPeriod(const TimeStamp_t &_timestamp);
@@ -88,8 +89,8 @@ public:
 	std::vector<exception_s>&				getExceptions(void);
 	const uint8_t							getActivitiesCount(void);
 	const uint8_t							getExceptionsCount(void);
-	activity_s								parseActivity(const char *_line);
-	exception_s								parseException(const char *_line);
+	static activity_s						parseActivity(const char *_line);
+	static exception_s						parseException(const char *_line);
 };
 
 

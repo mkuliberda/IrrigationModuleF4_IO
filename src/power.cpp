@@ -5,6 +5,8 @@
  *      Author: Mati
  */
 
+//TODO: Refactor required, Battery class as bridge pattern maybe?
+
 #include <power.h>
 
 

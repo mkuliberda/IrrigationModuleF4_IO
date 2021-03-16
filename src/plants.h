@@ -14,6 +14,9 @@
 #include <vector>
 #include <utilities.h>
 
+#ifndef PLANT_NAME_LEN
+	#define PLANT_NAME_LEN 20
+#endif
 
 enum plant_type_t: uint8_t {
 	plant_only,
@@ -25,7 +28,7 @@ struct PlantInfo_s{
 	plant_type_t	p_type;
 	bool			rain_exposed;
 	float			soil_moisture_percent;
-	char			name[20];
+	char			name[PLANT_NAME_LEN];
 };
 
 //Decorator design pattern used for plants
@@ -43,6 +46,8 @@ public:
 	virtual bool isRainExposed() = 0;
 };
 
+
+
 class Plant : public PlantInterface {
 private:
 
@@ -53,7 +58,7 @@ private:
 	bool											rain_exposed;
 
 public:
-	Plant(const std::string& _name, const uint8_t& _id, const bool& _rain_exposed) :
+	Plant(const std::string_view& _name, const uint8_t& _id, const bool& _rain_exposed) :
 		name(_name),
 		id(_id),
 		rain_exposed(_rain_exposed)
@@ -62,7 +67,7 @@ public:
 		p_type = plant_only;
 	}
 
-	Plant(const std::string&& _name, const uint8_t&& _id, const bool&& _rain_exposed) :
+	Plant(const std::string_view&& _name, const uint8_t&& _id, const bool&& _rain_exposed) :
 		name(std::move(_name)),
 		id(std::move(_id)),
 		rain_exposed(std::move(_rain_exposed))

@@ -29,7 +29,7 @@ uint8_t  IrrigationSector::getPlantsCount() const {
 	return static_cast<uint8_t>(vPlants.size());
 }
 
-float IrrigationSector::getPlantHealth(const std::string& _name) const {
+float IrrigationSector::getPlantHealth(const std::string_view& _name) const {
 	for (auto &plant : vPlants) {
 		if (_name.compare(plant->getName()) == 0) return plant->getMoisturePercent();
 	}
@@ -62,7 +62,7 @@ struct IrrigationSectorInfo_s&	IrrigationSector::getInfo(){
 	return sector_info;
 }
 
-bool IrrigationSector::setPlantMoistureByName(const std::string& _plant_name, const float& _moisture_percent){
+bool IrrigationSector::setPlantMoistureByName(const std::string_view& _plant_name, const float& _moisture_percent){
 	for (auto &plant : vPlants) {
 		if (plant->getName() == _plant_name) {
 			return plant->setMoisturePercent(_moisture_percent);
@@ -79,40 +79,44 @@ void ConcreteIrrigationSectorBuilder::Reset() {
  * All production steps work with the same sector instance.
  */
 
-bool ConcreteIrrigationSectorBuilder::producePlantWithDMAMoistureSensor(const std::string& _p_name, const bool& _rain_exposed, const float& _ref_voltage, const uint32_t& _quantization_levels){
-	bool retval = false;
+ConcreteIrrigationSectorBuilder& ConcreteIrrigationSectorBuilder::producePlantWithDMAMoistureSensor(const std::string_view& _p_name, const bool& _rain_exposed, const float& _ref_voltage, const uint32_t& _quantization_levels){
 	uint8_t idx = static_cast<uint8_t>(sector->vPlants.size());
 	if (idx <= sector->getPlantsCountLimit()) {
 		sector->vPlants.emplace_back(std::unique_ptr<PlantInterface>(new PlantWithDMAMoistureSensor(new Plant(_p_name, idx, _rain_exposed), _ref_voltage, _quantization_levels)));
 		sector->vPlants.shrink_to_fit();
-		retval = true;
 	}
-	return retval;
+	return *this;
 }
 
-void ConcreteIrrigationSectorBuilder::produceDRV8833PumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
+ConcreteIrrigationSectorBuilder& ConcreteIrrigationSectorBuilder::produceDRV8833PumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
 	const std::array<struct gpio_s, 2>& _pinout, const struct gpio_s& _led_pinout,
 	const struct gpio_s& _fault_pinout, const struct gpio_s& _mode_pinout){
 
 	sector->pump_controller.setMode(_controller_mode);
 	const std::array<struct gpio_s, 4> pins = { _pinout[0], _pinout[1], 0, 0 };
 	sector->pump_controller.createPump(pump_type_t::drv8833_dc, PumpId++, _idletime_required_seconds, _runtime_limit_seconds, pins, _led_pinout, _fault_pinout, _mode_pinout);
+
+	return *this;
 }
 
-void ConcreteIrrigationSectorBuilder::produceDRV8833PumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
+ConcreteIrrigationSectorBuilder& ConcreteIrrigationSectorBuilder::produceDRV8833PumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
 	const std::array<struct gpio_s, 4>& _pinout, const struct gpio_s& _led_pinout,
 	const struct gpio_s& _fault_pinout, const struct gpio_s& _mode_pinout) {
 
 	sector->pump_controller.setMode(_controller_mode);
 	sector->pump_controller.createPump(pump_type_t::drv8833_dc, PumpId++, _idletime_required_seconds, _runtime_limit_seconds, _pinout, _led_pinout, _fault_pinout, _mode_pinout);
+
+	return *this;
 }
 
-void ConcreteIrrigationSectorBuilder::produceBinaryPumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
+ConcreteIrrigationSectorBuilder& ConcreteIrrigationSectorBuilder::produceBinaryPumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds, const uint32_t& _runtime_limit_seconds, \
 	const struct gpio_s& _pinout, const struct gpio_s& _led){
 
 	sector->pump_controller.setMode(_controller_mode);
 	const std::array<struct gpio_s, 4> pins = { _pinout, 0, 0, 0 };
 	this->sector->pump_controller.createPump(pump_type_t::binary, PumpId++, _idletime_required_seconds, _runtime_limit_seconds, pins, _led);
+
+	return *this;
 }
 
 std::unique_ptr<IrrigationSector> ConcreteIrrigationSectorBuilder::GetProduct() {
