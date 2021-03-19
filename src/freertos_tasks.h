@@ -24,16 +24,7 @@
 #include "sd_diskio.h"
 #include "stm32f4xx_hal_rtc.h"
 
-#define LOG_TEXT_LEN 26
-#define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d %s: %s\n"
 #define SECTORS_AMOUNT 4
-
-#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Generic)
-#define C(x) x,
-enum reporter_t { REPORTERS TOP };
-#undef C
-#define C(x) #x,
-const char * const reporter[] = { REPORTERS };
 
 struct activity_msg{
 	uint8_t sector_nbr;
@@ -52,21 +43,6 @@ struct plant_msg{
 	uint8_t type;
 };
 
-struct log_time{
-	uint8_t hours;
-	uint8_t minutes;
-	uint8_t seconds;
-	uint8_t day;
-	uint8_t month;
-	uint8_t year;
-};
-
-struct log_msg{
-	char 			text[LOG_TEXT_LEN];
-	uint8_t			len;
-	reporter_t 		reporter_id;
-	log_time		time;
-};
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize );

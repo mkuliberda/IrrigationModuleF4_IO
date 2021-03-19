@@ -10,6 +10,7 @@
 #include "pumps.h"
 #include "sector.h"
 #include "sensors.h"
+#include "logger.h"
 
 
 osThreadId SysMonitorTaskHandle;
@@ -279,23 +280,17 @@ void SysMonitorTask(void const * argument)
 
 void SDCardTask(void const *argument)
 {
-
-	RTC_TimeTypeDef rtc_time;
-	RTC_DateTypeDef rtc_date;
-	TimeStamp_t timestamp;
-
-	const char log_filename[] = "LOG.TXT";
     FIL log_file;
 	FIL config_file;
-	//UINT bytesCnt= 0;
 	char logical_drive[4] = {0, 0, 0, 0};   /* SD logical drive path */
 	FATFS file_system;    /* File system object for SD logical drive */
 	DIR directory;
 	FILINFO file_info;
 	char cwd_buffer[80] = "/";
 
+	HAL_FatFs_Logger &logger = HAL_FatFs_Logger::createInstance();
+
 	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
-	//Scheduler schedule = Scheduler("PARSER");
 	bool mount_success = false;
 	activity_msg *activity = nullptr;
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
@@ -308,31 +303,10 @@ void SDCardTask(void const *argument)
 	log_msg *irg_message = nullptr;
 	log_msg *wls_message = nullptr;
 
-
-	HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-	HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-	timestamp.day = rtc_date.Date;
-	timestamp.hours = rtc_time.Hours;
-	timestamp.minutes = rtc_time.Minutes;
-	timestamp.month = rtc_date.Month;
-	timestamp.seconds = rtc_time.Seconds;
-	timestamp.weekday = rtc_date.WeekDay;
-	timestamp.year = rtc_date.Year;
-
-
 	if(f_mount(&file_system, logical_drive, 1) == FR_OK){
 		mount_success = true;
+		logger.writeLog("SDCard mount successful!", &log_file, reporter_t::Task_SDCard);
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-		if(f_open(&log_file, log_filename, FA_WRITE | FA_OPEN_APPEND) == FR_OK){
-			char log_str[] = "SDCard mount successful!";
-			if(f_printf(&log_file, LOG_FORMAT, timestamp.day, timestamp.month, timestamp.year, timestamp.hours, timestamp.minutes, timestamp.seconds, reporter[Task_SDCard], log_str) == EOF){
-				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-			}
-			while (f_close(&log_file) != FR_OK);
-		}
-		else{
-			HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-		}
 
 		if (f_opendir(&directory, cwd_buffer) == FR_OK){
 			do{
@@ -387,30 +361,14 @@ void SDCardTask(void const *argument)
 		}
 	}
 
-
     for( ;; )
     {
-		HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-		HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-		timestamp.day = rtc_date.Date;
-		timestamp.hours = rtc_time.Hours;
-		timestamp.minutes = rtc_time.Minutes;
-		timestamp.month = rtc_date.Month;
-		timestamp.seconds = rtc_time.Seconds;
-		timestamp.weekday = rtc_date.WeekDay;
-		timestamp.year = rtc_date.Year;
-
 		if(mount_success){
 			do{
 				evt = osMailGet(sys_logs_box, 1);
 				if (evt.status == osEventMail){
 					sys_message = (log_msg*)evt.value.p;
-					char text[LOG_TEXT_LEN] = "";
-					strncpy(text, sys_message->text, sys_message->len);
-					if(f_open(&log_file, log_filename, FA_WRITE | FA_OPEN_APPEND) == FR_OK){
-						f_printf(&log_file, LOG_FORMAT, sys_message->time.day, sys_message->time.month, sys_message->time.year,	sys_message->time.hours, sys_message->time.minutes, sys_message->time.seconds, reporter[sys_message->reporter_id], text);
-						while (f_close(&log_file) != FR_OK);
-					}
+					logger.writeLog(sys_message, &log_file);
 				}
 				osMailFree(sys_logs_box, sys_message);
 			}while(evt.status == osEventMail);
@@ -419,12 +377,7 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(irg_logs_box, 1);
 				if (evt.status == osEventMail){
 					irg_message = (log_msg*)evt.value.p;
-					char text[LOG_TEXT_LEN] = "";
-					strncpy(text, irg_message->text, irg_message->len);
-					if(f_open(&log_file, log_filename, FA_WRITE | FA_OPEN_APPEND) == FR_OK){
-						f_printf(&log_file, LOG_FORMAT, irg_message->time.day, irg_message->time.month, irg_message->time.year, irg_message->time.hours, irg_message->time.minutes, irg_message->time.seconds, reporter[irg_message->reporter_id], text);
-						while (f_close(&log_file) != FR_OK);
-					}
+					logger.writeLog(irg_message, &log_file);
 				}
 				osMailFree(irg_logs_box, irg_message);
 			}while(evt.status == osEventMail);
@@ -433,12 +386,7 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(wls_logs_box, 1);
 				if (evt.status == osEventMail){
 					wls_message = (log_msg*)evt.value.p;
-					char text[LOG_TEXT_LEN] = "";
-					strncpy(text, wls_message->text, wls_message->len);
-					if(f_open(&log_file, log_filename, FA_WRITE | FA_OPEN_APPEND) == FR_OK){
-						f_printf(&log_file, LOG_FORMAT, wls_message->time.day, wls_message->time.month, wls_message->time.year, wls_message->time.hours, wls_message->time.minutes, wls_message->time.seconds, reporter[wls_message->reporter_id], text);
-						while (f_close(&log_file) != FR_OK);
-					}
+					logger.writeLog(wls_message, &log_file);
 				}
 				osMailFree(wls_logs_box, wls_message);
 			}while(evt.status == osEventMail);
