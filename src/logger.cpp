@@ -1,12 +1,22 @@
 #include "Logger.h"
 #include "string.h"
 
-
+/**
+ * @brief 
+ * 
+ * @return HAL_FatFs_Logger& 
+ */
 HAL_FatFs_Logger& HAL_FatFs_Logger::createInstance(){
 	static HAL_FatFs_Logger instance;
 	return instance;
 }
 
+/**
+ * @brief 
+ * 
+ * @param _msg 
+ * @param log_file 
+ */
 void HAL_FatFs_Logger::writeLog(log_msg *_msg, FIL *log_file) {
 	if (valid){
 		char text[LOG_TEXT_LEN] = "";
@@ -18,6 +28,13 @@ void HAL_FatFs_Logger::writeLog(log_msg *_msg, FIL *log_file) {
 	}
 }
 
+/**
+ * @brief 
+ * 
+ * @param _msg 
+ * @param log_file 
+ * @param _reporter 
+ */
 void HAL_FatFs_Logger::writeLog(const std::string_view& _msg, FIL *log_file, const reporter_t& _reporter) {
 	if (valid){
 		RTC_TimeTypeDef rtc_time;
@@ -36,11 +53,21 @@ void HAL_FatFs_Logger::writeLog(const std::string_view& _msg, FIL *log_file, con
 	}
 }
 
+/**
+ * @brief 
+ * 
+ * @param _log_text_max_len 
+ */
 void HAL_FatFs_Logger::setMsgMaxLength(const uint32_t & _log_text_max_len){
 	if (_log_text_max_len > 0) log_text_max_len = _log_text_max_len;
 	else valid = false;
 }
 
+/**
+ * @brief 
+ * 
+ * @param _file_path 
+ */
 void HAL_FatFs_Logger::changeFilePath(const std::string_view& _file_path) {
 	file_path = _file_path;    
 }
