@@ -48,7 +48,6 @@ struct log_msg {
 };
 
 
-//TODO: add thread safety
 class HAL_FatFs_Logger
 {
 private:
