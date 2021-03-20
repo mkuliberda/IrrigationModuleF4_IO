@@ -8,7 +8,7 @@
  }
 #endif
 
-osMutexId logger_mutex;
+osMutexId logger_mutex = NULL;
 osMutexDef (logger_mutex);
 
 /**
@@ -17,7 +17,7 @@ osMutexDef (logger_mutex);
  * @return HAL_FatFs_Logger& 
  */
 HAL_FatFs_Logger& HAL_FatFs_Logger::createInstance(){
-	logger_mutex = osMutexCreate(osMutex(logger_mutex));
+	if (logger_mutex == NULL) logger_mutex = osMutexCreate(osMutex(logger_mutex));
 	static HAL_FatFs_Logger instance;
 	return instance;
 }
