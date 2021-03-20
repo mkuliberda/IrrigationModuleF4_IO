@@ -3,7 +3,7 @@
 #define __freertos_tasks_H
 
 
-#include "scheduler.h"
+#include "../lib/scheduler/scheduler.h"
 #include "plants.h"
 
 #ifdef __cplusplus

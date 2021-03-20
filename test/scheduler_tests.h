@@ -1,0 +1,2 @@
+void test_function_scheduler_parse_activity_valid(void);
+void test_function_scheduler_parse_activity_invalid(void);

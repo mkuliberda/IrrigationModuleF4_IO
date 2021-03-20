@@ -5,7 +5,7 @@
 #include "sensors.h"
 #include <vector>
 #include <string>
-#include "hysteresis.h"
+#include "../lib/hysteresis/hysteresis.h"
 #include <memory>
 
 #define W_SUCCESS		(uint8_t)1

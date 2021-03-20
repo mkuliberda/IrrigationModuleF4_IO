@@ -11,6 +11,7 @@
 #include <vector>
 #include <string>
 #include <time.h>
+#include <string_view>
 
 typedef struct {
 	uint8_t weekday;
