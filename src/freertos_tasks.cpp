@@ -31,8 +31,10 @@ osMailQDef(irg_logs_box, 10, log_msg);
 osMailQId wls_logs_box;
 osMailQDef(wls_logs_box, 10, log_msg);
 
-osSemaphoreId time_acquired_sem;
-osSemaphoreDef(time_acquired_sem);
+osSemaphoreId time_rdy_sem;
+osSemaphoreDef(time_rdy_sem);
+osSemaphoreId config_rdy_sem;
+osSemaphoreDef(config_rdy_sem);
 
 
 void SysMonitorTask(void const * argument);
@@ -222,7 +224,7 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(wirelessTask, WirelessCommTask, osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
   WirelessCommTaskHandle = osThreadCreate(osThread(wirelessTask), NULL);
 
-  osThreadDef(irrigationTask, IrrigationControlTask, osPriorityHigh, 0, 60*configMINIMAL_STACK_SIZE);
+  osThreadDef(irrigationTask, IrrigationControlTask, osPriorityNormal, 0, 60*configMINIMAL_STACK_SIZE);
   IrrigationControlTaskHandle = osThreadCreate(osThread(irrigationTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -293,6 +295,7 @@ void SDCardTask(void const *argument)
 	char cwd_buffer[80] = "/";
 
 	HAL_FatFs_Logger &logger = HAL_FatFs_Logger::createInstance();
+	config_rdy_sem = osSemaphoreCreate(osSemaphore(config_rdy_sem), 1);
 
 	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
 	bool mount_success = false;
@@ -306,6 +309,8 @@ void SDCardTask(void const *argument)
 	log_msg *sys_message = nullptr;
 	log_msg *irg_message = nullptr;
 	log_msg *wls_message = nullptr;
+
+	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
 	if(f_mount(&file_system, logical_drive, 1) == FR_OK){
 		mount_success = true;
@@ -365,6 +370,8 @@ void SDCardTask(void const *argument)
 		}
 	}
 
+	osSemaphoreRelease(config_rdy_sem);
+
     for( ;; )
     {
 		if(mount_success){
@@ -405,11 +412,16 @@ void SDCardTask(void const *argument)
 void WirelessCommTask(void const *argument)
 {
 	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
-	//time_acquired_sem = osSemaphoreCreate(osSemaphore(time_acquired_sem), 0);
+	time_rdy_sem = osSemaphoreCreate(osSemaphore(time_rdy_sem), 1);
 
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
 
+	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless);
+	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless);
+
+
+	osSemaphoreWait(time_rdy_sem, osWaitForever);
 	//TODO: set time based on wireless communication from external computer
 	rtc_time.Hours = 18;
 	rtc_time.Minutes = 59;
@@ -420,12 +432,13 @@ void WirelessCommTask(void const *argument)
 	rtc_date.Date = 14;
 	rtc_date.Month = 9;
 	rtc_date.Year = 20;
-
 	HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 	HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-	publishLogMessage("Wireless Com task started", wls_logs_box, reporter_t::Task_Wireless);
 
 	osDelay(5000);
+	publishLogMessage("Acquired current time!", wls_logs_box, reporter_t::Task_Wireless);
+	osSemaphoreRelease(time_rdy_sem);
+
 
 
 	for( ;; )
@@ -463,6 +476,8 @@ void IrrigationControlTask(void const *argument){
 	uint8_t plants_cnt[SECTORS_AMOUNT]={0,0,0,0};
 
 	osDelay(2000);
+	osSemaphoreWait(time_rdy_sem, osWaitForever);
+	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation);
