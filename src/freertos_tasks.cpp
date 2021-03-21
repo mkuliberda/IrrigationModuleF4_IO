@@ -310,12 +310,12 @@ void SDCardTask(void const *argument)
 	log_msg *irg_message = nullptr;
 	log_msg *wls_message = nullptr;
 
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
 	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
 	if(f_mount(&file_system, logical_drive, 1) == FR_OK){
 		mount_success = true;
 		logger.writeLog("SDCard mount successful!", &log_file, reporter_t::Task_SDCard);
-		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
 
 		if (f_opendir(&directory, cwd_buffer) == FR_OK){
 			do{
@@ -370,6 +370,7 @@ void SDCardTask(void const *argument)
 		}
 	}
 
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 	osSemaphoreRelease(config_rdy_sem);
 
     for( ;; )
@@ -475,7 +476,7 @@ void IrrigationControlTask(void const *argument){
 	uint8_t exceptions_cnt[SECTORS_AMOUNT]={0,0,0,0};
 	uint8_t plants_cnt[SECTORS_AMOUNT]={0,0,0,0};
 
-	osDelay(2000);
+	//osDelay(2000);
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
 	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
