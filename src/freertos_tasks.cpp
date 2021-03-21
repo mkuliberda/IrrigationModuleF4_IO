@@ -476,7 +476,6 @@ void IrrigationControlTask(void const *argument){
 	uint8_t exceptions_cnt[SECTORS_AMOUNT]={0,0,0,0};
 	uint8_t plants_cnt[SECTORS_AMOUNT]={0,0,0,0};
 
-	//osDelay(2000);
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
 	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
@@ -539,11 +538,10 @@ void IrrigationControlTask(void const *argument){
 					if (sector_schedule[s_nbr].isActive()){
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
 						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr));
-						
 					}
 					else{
-						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr));
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr));
 					}
 
 					sector_active_prev[s_nbr] = sector_schedule[s_nbr].isActive();
