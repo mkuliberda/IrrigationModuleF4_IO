@@ -7,6 +7,10 @@
 #include <chrono> //TODO: use UDLs for time counting and duration?
 #include "gpio.h"
 #include "freertos_memory.h"
+
+#define PUMP_IDLETIME_REQUIRED_SEC 30
+#define PUMP_RUNTIME_LIMIT_SEC 300
+
 static uint8_t PumpId = 0;
 
 struct PumpInfo_s {

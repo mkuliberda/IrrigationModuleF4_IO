@@ -74,7 +74,7 @@ bool Watertank::update(const double& _dt) {
 		case sensor_type_t::waterlevel_sensor:
 			if (sensor->isValid() == true) {
 				errcode.reset(22 + water_level_readings_count);
-				if (sensor->read()) { //TODO: check if 1 means submersed on STm32
+				if (sensor->read()) { //TODO: check if 1 means submersed on STM32
 					temp_water_level_percent = this->waterlevelConvertToPercent(sensor->getMountHeightMeters());
 					if (temp_water_level_percent > water_level_percent) water_level_percent = temp_water_level_percent;
 				}
@@ -191,18 +191,20 @@ void ConcreteWatertankBuilder::Reset() {
  * All production steps work with the same watertank instance.
  */
 
-void ConcreteWatertankBuilder::produceOpticalWaterLevelSensor(const float& _mount_height_meters, const struct gpio_s& _pinout) {
+ConcreteWatertankBuilder& ConcreteWatertankBuilder::produceOpticalWaterLevelSensor(const float& _mount_height_meters, const struct gpio_s& _pinout) {
 	if (watertank->incrementFixedWaterLevelSensorsCount() == W_SUCCESS && _mount_height_meters <= watertank->getHeightMeters()) {
 		watertank->vSensors.emplace_back(new OpticalWaterLevelSensor(_mount_height_meters, _pinout));
 		watertank->vSensors.shrink_to_fit();
 	}
+	return *this;
 }
 
-void ConcreteWatertankBuilder::produceDS18B20TemperatureSensor(const struct gpio_s& _pinout, TIM_HandleTypeDef* _tim_baseHandle) {
+ConcreteWatertankBuilder& ConcreteWatertankBuilder::produceDS18B20TemperatureSensor(const struct gpio_s& _pinout, TIM_HandleTypeDef* _tim_baseHandle) {
 	if (watertank->incrementTemperatureSensorsCount() == W_SUCCESS) {
 		watertank->vSensors.emplace_back(new DS18B20TemperatureSensor(_pinout, _tim_baseHandle));
 		watertank->vSensors.shrink_to_fit();
 	}
+	return *this;
 }
 
 std::unique_ptr<Watertank> ConcreteWatertankBuilder::GetProduct() {
@@ -212,9 +214,16 @@ std::unique_ptr<Watertank> ConcreteWatertankBuilder::GetProduct() {
 	return result;
 }
 
-void ConcreteWatertankBuilder::setWatertankVolume(const double& _volume) {
+ConcreteWatertankBuilder& ConcreteWatertankBuilder::setWatertankVolume(const double& _volume) {
 	this->watertank->setVolume(_volume);
+	return *this;
 }
-void ConcreteWatertankBuilder::setWatertankHeight(const double& _height) {
+ConcreteWatertankBuilder& ConcreteWatertankBuilder::setWatertankHeight(const double& _height) {
 	this->watertank->setHeight(_height);
+	return *this;
+}
+
+ConcreteWatertankBuilder& ConcreteWatertankBuilder::setWatertankStateHysteresis(const double& _time_from_false_ms, const double& _time_from_true_ms){
+	this->watertank->setTankStateHysteresis(_time_from_false_ms, _time_from_true_ms);
+	return *this;
 }

@@ -20,7 +20,7 @@
 }
 #endif
 
-#define LOG_TEXT_LEN 26
+#define LOG_TEXT_LEN 40
 #define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d %s: %s\n"
 #define LOG_FILE  "LOG.TXT" 
 

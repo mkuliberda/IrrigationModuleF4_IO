@@ -31,6 +31,9 @@ osMailQDef(irg_logs_box, 10, log_msg);
 osMailQId wls_logs_box;
 osMailQDef(wls_logs_box, 10, log_msg);
 
+osSemaphoreId time_acquired_sem;
+osSemaphoreDef(time_acquired_sem);
+
 
 void SysMonitorTask(void const * argument);
 void SDCardTask(void const *argument);
@@ -70,7 +73,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   /* place for user code */
 }
 
-uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const uint8_t &_maxlen)
+uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter)
 {
 	std::bitset<8> errcode;
 	/*******errcode**********
@@ -89,6 +92,7 @@ uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const r
 
 	HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 	HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+	const uint8_t _maxlen = LOG_TEXT_LEN;
 
 	log_msg *msg = (log_msg*)osMailAlloc(mail_box, osWaitForever);
 
@@ -246,7 +250,7 @@ void SysMonitorTask(void const * argument)
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
 
-	publishLogMessage("Sys monitor task started", sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
+	publishLogMessage("Sys monitor task started", sys_logs_box, reporter_t::Task_SysMonitor);
 
 	for(;;)
 	{
@@ -254,25 +258,25 @@ void SysMonitorTask(void const * argument)
     	if (min_heap_size != prev_min_heap_size){
     		prev_min_heap_size = min_heap_size;
     		std::string_view msg = "Min HEAP size:" + patch::to_string(min_heap_size) + "b";
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
     	}
     	vTaskGetInfo(SDCardTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != SDCardPrevStackHighWaterMark){
     		std::string_view msg =  "SDCardTask HWMark:" + patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		SDCardPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
     	}
     	vTaskGetInfo(WirelessCommTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != WirelessCommPrevStackHighWaterMark){
     		std::string_view msg =  "WlsCom HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		WirelessCommPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
     	}
     	vTaskGetInfo(IrrigationControlTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != IrrigationControlPrevStackHighWaterMark){
     		std::string_view msg =  "IrrCtrl HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, LOG_TEXT_LEN);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
     	}
 		osDelay(2000);
 	}
@@ -339,13 +343,13 @@ void SDCardTask(void const *argument)
 									exception->exception = Scheduler::parseException(config_line);
 									while (osMailPut(exceptions_box, exception) != osOK);
 								}
-								else if(config_line[0] == 'P'){	//format P:Y,1,Pelargonia...
+								else if(config_line[0] == 'P'){	//format P1:Y,1,Pelargonia...
 									plant = (plant_msg*)osMailAlloc(plants_box, osWaitForever);
 									plant->sector_nbr = sector_nbr;
 									const std::string str(config_line);
-									plant->rain_exposed = str.substr(2,1) == "Y" ? true : false;
-									plant->type = atoi(str.substr(4,1).c_str());
-									str.copy(plant->name, MINIMUM(str.length() - 6, PLANT_NAME_LEN-1), 6);
+									plant->rain_exposed = str.substr(3,1) == "Y" ? true : false;
+									plant->type = atoi(str.substr(5,1).c_str());
+									str.copy(plant->name, MINIMUM(str.length() - 8, PLANT_NAME_LEN - 2), 7);
 									while (osMailPut(plants_box, plant) != osOK);
 								}
 							}
@@ -401,6 +405,7 @@ void SDCardTask(void const *argument)
 void WirelessCommTask(void const *argument)
 {
 	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
+	//time_acquired_sem = osSemaphoreCreate(osSemaphore(time_acquired_sem), 0);
 
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
@@ -418,7 +423,9 @@ void WirelessCommTask(void const *argument)
 
 	HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 	HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-	publishLogMessage("Wireless Com task started", wls_logs_box, reporter_t::Task_Wireless, LOG_TEXT_LEN);
+	publishLogMessage("Wireless Com task started", wls_logs_box, reporter_t::Task_Wireless);
+
+	osDelay(5000);
 
 
 	for( ;; )
@@ -438,55 +445,62 @@ void IrrigationControlTask(void const *argument){
 	RTC_DateTypeDef rtc_date;
 	TimeStamp_t timestamp;
 
-	bool sector_active_prev[SECTORS_AMOUNT] = {false, false, false, false};
+	bool sector_active_prev[SECTORS_AMOUNT] = {};
 	Scheduler sector_schedule[SECTORS_AMOUNT] = {Scheduler("SECTOR1"), Scheduler("SECTOR2"), Scheduler("SECTOR3"), Scheduler("SECTOR4")};
+	std::array<std::array<struct gpio_s, 2>, SECTORS_AMOUNT> pump_ctrl_gpio;
+	pump_ctrl_gpio[0] = {{{ GPIOE, GPIO_PIN_0 }, { GPIOE, GPIO_PIN_1 }}};
+	pump_ctrl_gpio[1] = {{{ GPIOA, GPIO_PIN_15 }, { GPIOA, GPIO_PIN_14 }}};
+	pump_ctrl_gpio[2] = {{{ GPIOE, GPIO_PIN_15 }, { GPIOE, GPIO_PIN_14 }}};
+	pump_ctrl_gpio[3] = {{{ GPIOE, GPIO_PIN_10 }, { GPIOE, GPIO_PIN_9 }}};
+	const struct gpio_s pump_led_gpio[SECTORS_AMOUNT] = {{GPIOE, GPIO_PIN_2},{GPIOA, GPIO_PIN_13},{GPIOE, GPIO_PIN_13},{GPIOE, GPIO_PIN_8}};
+	const struct gpio_s pump_fault_gpio[SECTORS_AMOUNT] = {{GPIOE, GPIO_PIN_3},{GPIOA, GPIO_PIN_10},{GPIOE, GPIO_PIN_12},{GPIOE, GPIO_PIN_7}};
+	const struct gpio_s pump_mode_gpio[SECTORS_AMOUNT] = {{GPIOE, GPIO_PIN_4},{GPIOA, GPIO_PIN_9},{GPIOE, GPIO_PIN_11},{GPIOB, GPIO_PIN_2}};
+	const struct gpio_s opt_wl_sensor1_gpio = {GPIOB, GPIO_PIN_12};
+	std::unique_ptr<IrrigationSector>(p_sector[SECTORS_AMOUNT]);
+	std::unique_ptr<Watertank>(p_watertank);
 	uint8_t activities_cnt[SECTORS_AMOUNT]={0,0,0,0};
 	uint8_t exceptions_cnt[SECTORS_AMOUNT]={0,0,0,0};
-	uint16_t plants_cnt = 0;
+	uint8_t plants_cnt[SECTORS_AMOUNT]={0,0,0,0};
 
-	osDelay(1000);
+	osDelay(2000);
+
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation, LOG_TEXT_LEN);
+	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation);
 
-	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder; //leave as pointer to delete when not needed anymore
-	sector_builder->producePlantWithDMAMoistureSensor("Pelargonia1", true)
-					.producePlantWithDMAMoistureSensor("Kroton1", false)
-					.producePlantWithDMAMoistureSensor("Kroton2", true)
-					.producePlantWithDMAMoistureSensor("Truskawka1", true)
-					.producePlantWithDMAMoistureSensor("Truskawka2", true)
-					;
-
-	//sector_builder->produceDRV8833PumpWithController(pump_controller_mode_t::external, 60, 300, pump1gpio, pump1led, pump1fault, pump1mode);
-	std::unique_ptr<IrrigationSector>(p_sector1);
-	p_sector1 = sector_builder->GetProduct();
-
-	delete sector_builder;
+	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder[SECTORS_AMOUNT]; //leave as pointer to delete when not needed anymore
+	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
+		sector_builder[i].produceDRV8833PumpWithController(pump_controller_mode_t::external, PUMP_IDLETIME_REQUIRED_SEC, PUMP_RUNTIME_LIMIT_SEC, pump_ctrl_gpio[i], pump_led_gpio[i], pump_fault_gpio[i], pump_mode_gpio[i]);
+	}
 
 	do{
-		evt = osMailGet(plants_box, 1);
+		evt = osMailGet(plants_box, 10);
 		if (evt.status == osEventMail){
 			msg = (plant_msg*)evt.value.p;
-			switch (msg->sector_nbr){
-			case 0:
-				//schedule[0].addException(msg->exception);
-				break;
-			case 1:
-				//schedule[1].addException(msg->exception);
-				break;
-			case 2:
-				//schedule[2].addException(msg->exception);
-				break;
-			case 3:
-				//schedule[3].addException(msg->exception);
-				break;
-			default:
-				break;
+			if (msg->type == 1){
+				sector_builder[msg->sector_nbr].producePlantWithDMAMoistureSensor(msg->name, msg->rain_exposed);
+				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr)) + " got plant: " + msg->name;
+				publishLogMessage(text, irg_logs_box, reporter_t::Task_Irrigation);
 			}
 		}
 		osMailFree(plants_box, msg);
 	}while(evt.status == osEventMail);
 
+	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
+		 p_sector[i] = sector_builder[i].GetProduct();
+	}
 
+	delete[] sector_builder;
+
+	ConcreteWatertankBuilder *watertank_builder = new ConcreteWatertankBuilder;
+	watertank_builder->produceOpticalWaterLevelSensor(0.0825_m,  opt_wl_sensor1_gpio);
+
+	p_watertank = watertank_builder->GetProduct();
+
+	p_watertank->setTankStateHysteresis(4.0_sec, 4.0_sec);
+	p_watertank->setHeight(55.0_cm);
+	p_watertank->setVolume(50.0_l);
+
+	delete watertank_builder;
 
 	for( ;; )
 	{
@@ -508,10 +522,11 @@ void IrrigationControlTask(void const *argument){
 				if (sector_schedule[s_nbr].update(timestamp) != sector_active_prev[s_nbr]){
 					if (sector_schedule[s_nbr].isActive()){
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr), LOG_TEXT_LEN);
+						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr));
+						
 					}
 					else{
-						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr), LOG_TEXT_LEN);
+						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr));
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
 					}
 
@@ -528,8 +543,6 @@ void IrrigationControlTask(void const *argument){
 		osDelay(500);
 	}
 
-	//delete PlantWithDMAMoistureSensor1;
-	//delete PlantWithDMAMoistureSensor2;
 }
 
 
