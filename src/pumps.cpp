@@ -556,6 +556,7 @@ bool PumpController::update(const double& _dt, bool& _activate_watering) {
 	return consumed;
 }
 
+//TODO: pass Pump object as an argument
 bool PumpController::createPump(const pump_type_t& _pump_type, const uint8_t& _id, const uint32_t& _idletime_required_seconds, \
 	const uint32_t& _runtime_limit_seconds, const std::array<struct gpio_s, 4>& _pinout, const struct gpio_s& _led_pinout, \
 	const struct gpio_s& _fault_pinout, const struct gpio_s& _mode_pinout) {

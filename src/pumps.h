@@ -68,12 +68,12 @@ public:
 	PumpImp(const uint8_t& _id, const pump_type_t& _type, const uint32_t& _idletime_required_seconds = 0, const uint32_t& _runtime_limit_seconds = 4294967295) {
 		type = _type;
 		status.id = _id;
-		init(_idletime_required_seconds, _runtime_limit_seconds);
+		init(_idletime_required_seconds, _runtime_limit_seconds); //TODO: "calling virtual function in constructor is dangerous"
 	}
 	PumpImp(const uint8_t&& _id, const pump_type_t&& _type, const uint32_t&& _idletime_required_seconds = 0, const uint32_t&& _runtime_limit_seconds = 4294967295) {
 		type = std::move(_type);
 		status.id = std::move(_id);
-		init(std::move(_idletime_required_seconds), std::move(_runtime_limit_seconds));
+		init(std::move(_idletime_required_seconds), std::move(_runtime_limit_seconds)); //TODO: "calling virtual function in constructor is dangerous"
 	}
 	virtual ~PumpImp() {}
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.

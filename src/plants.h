@@ -135,14 +135,14 @@ public:
 		PlantWithSensor(core),
 		ref_voltage(_ref_voltage),
 		quantization_levels(_quantization_levels) {
-		setPlantType();
+		setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
 	}
 
 	PlantWithDMAMoistureSensor(PlantInterface *core, const float&& _ref_voltage = 3.3, const uint32_t&& _quantization_levels = 4095) :
 		PlantWithSensor(core),
 		ref_voltage(std::move(_ref_voltage)),
 		quantization_levels(std::move(_quantization_levels)) {
-		setPlantType();
+		setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
 	}
 
 	~PlantWithDMAMoistureSensor() {}
