@@ -1,13 +1,9 @@
-#include "hysteresis_tests.h"
 #include "scheduler_tests.h"
-#include <unity.h>
+#include "hysteresis_tests.h"
+#include "gtest/gtest.h"
+
 
 int main(int argc, char **argv) {
-    UNITY_BEGIN();
-    RUN_TEST(test_function_scheduler_parse_activity_valid);
-    RUN_TEST(test_function_scheduler_parse_activity_invalid);
-    RUN_TEST(test_function_hysteresis);
-    UNITY_END();
-
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
