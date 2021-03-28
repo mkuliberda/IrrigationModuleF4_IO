@@ -123,7 +123,7 @@ bool Watertank::update(const double& _dt) {
 	else if (water_level_percent > 30) { this->setWaterLevel(contentlevel_t::above30); errcode.reset(18);}
 	else if (water_level_percent > 20) { this->setWaterLevel(contentlevel_t::above20); errcode.reset(18);}
 	else if (water_level_percent > 10) { this->setWaterLevel(contentlevel_t::above10); errcode.reset(18);}
-	else if (water_level_percent >= 0) { this->setWaterLevel(contentlevel_t::empty); is_ok = false;}
+	else { this->setWaterLevel(contentlevel_t::empty); is_ok = false;}
 
 	watertank_info.water_level = static_cast<uint8_t>(water_level_percent);
 	watertank_info.errors = errcode.to_ulong();

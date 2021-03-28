@@ -11,7 +11,15 @@
 #include "sector.h"
 #include "sensors.h"
 #include "logger.h"
+#include <map>
+#include <queue>
 
+typedef std::pair<log_msg_prio_t, log_msg*> PAIR;
+struct cmp {
+	bool operator()(const PAIR &a, const PAIR &b) {
+		return a.first < b.first;
+	};
+};
 
 osThreadId SysMonitorTaskHandle;
 osThreadId SDCardTaskHandle;
@@ -75,7 +83,7 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   /* place for user code */
 }
 
-uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter)
+uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const log_msg_prio_t &_msg_priority)
 {
 	std::bitset<8> errcode;
 	/*******errcode**********
@@ -111,6 +119,7 @@ uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const r
 	}
 	msg->reporter_id = _reporter;
 	msg->len = msg_txt.length() + 1;
+	msg->priority = _msg_priority;
 	msg_txt.copy(msg->text, msg_txt.length(), 0);
 	msg->text[MINIMUM((std::size_t)(_maxlen - 1), msg_txt.length())] = '\0';
 
@@ -252,7 +261,7 @@ void SysMonitorTask(void const * argument)
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
 
-	publishLogMessage("Sys monitor task started", sys_logs_box, reporter_t::Task_SysMonitor);
+	publishLogMessage("Sys monitor task started", sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::INFO);
 
 	for(;;)
 	{
@@ -260,25 +269,25 @@ void SysMonitorTask(void const * argument)
     	if (min_heap_size != prev_min_heap_size){
     		prev_min_heap_size = min_heap_size;
     		std::string_view msg = "Min HEAP size:" + patch::to_string(min_heap_size) + "b";
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
     	vTaskGetInfo(SDCardTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != SDCardPrevStackHighWaterMark){
     		std::string_view msg =  "SDCardTask HWMark:" + patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		SDCardPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
     	vTaskGetInfo(WirelessCommTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != WirelessCommPrevStackHighWaterMark){
     		std::string_view msg =  "WlsCom HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		WirelessCommPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
     	vTaskGetInfo(IrrigationControlTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != IrrigationControlPrevStackHighWaterMark){
     		std::string_view msg =  "IrrCtrl HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
-    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor);
+    		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
 		osDelay(2000);
 	}
@@ -376,11 +385,13 @@ void SDCardTask(void const *argument)
     for( ;; )
     {
 		if(mount_success){
+			std::multimap<log_msg_prio_t, log_msg*> msg_map = {};
 			do{
 				evt = osMailGet(sys_logs_box, 1);
 				if (evt.status == osEventMail){
 					sys_message = (log_msg*)evt.value.p;
-					logger.writeLog(sys_message, &log_file);
+					msg_map.insert({ sys_message->priority, sys_message });
+					//logger.writeLog(sys_message, &log_file);
 				}
 				osMailFree(sys_logs_box, sys_message);
 			}while(evt.status == osEventMail);
@@ -389,7 +400,8 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(irg_logs_box, 1);
 				if (evt.status == osEventMail){
 					irg_message = (log_msg*)evt.value.p;
-					logger.writeLog(irg_message, &log_file);
+					msg_map.insert({ irg_message->priority, irg_message });
+					//logger.writeLog(irg_message, &log_file);
 				}
 				osMailFree(irg_logs_box, irg_message);
 			}while(evt.status == osEventMail);
@@ -398,10 +410,21 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(wls_logs_box, 1);
 				if (evt.status == osEventMail){
 					wls_message = (log_msg*)evt.value.p;
-					logger.writeLog(wls_message, &log_file);
+					msg_map.insert({ wls_message->priority, wls_message });
+					//logger.writeLog(wls_message, &log_file);
 				}
 				osMailFree(wls_logs_box, wls_message);
 			}while(evt.status == osEventMail);
+
+			std::priority_queue<PAIR, std::vector<PAIR>, cmp> logs_queue{};
+			for (const auto &msg: msg_map ) {
+				logs_queue.push(msg);
+				}
+			while (!logs_queue.empty()) {
+				PAIR top = logs_queue.top() ;
+				logger.writeLog(top.second, &log_file);
+				logs_queue.pop();
+				}
 		}
 
     	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
@@ -418,8 +441,8 @@ void WirelessCommTask(void const *argument)
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
 
-	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless);
-	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless);
+	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
+	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 
 
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
@@ -437,7 +460,7 @@ void WirelessCommTask(void const *argument)
 	HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 
 	osDelay(5000);
-	publishLogMessage("Acquired current time!", wls_logs_box, reporter_t::Task_Wireless);
+	publishLogMessage("Acquired current time!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 	osSemaphoreRelease(time_rdy_sem);
 
 
@@ -480,7 +503,7 @@ void IrrigationControlTask(void const *argument){
 	osSemaphoreWait(config_rdy_sem, osWaitForever);
 
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation);
+	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
 
 	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder[SECTORS_AMOUNT]; //leave as pointer to delete when not needed anymore
 	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
@@ -494,7 +517,7 @@ void IrrigationControlTask(void const *argument){
 			if (msg->type == 1){
 				sector_builder[msg->sector_nbr].producePlantWithDMAMoistureSensor(msg->name, msg->rain_exposed);
 				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr)) + " got plant: " + msg->name;
-				publishLogMessage(text, irg_logs_box, reporter_t::Task_Irrigation);
+				publishLogMessage(text, irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::LOW);
 			}
 		}
 		osMailFree(plants_box, msg);
@@ -537,11 +560,11 @@ void IrrigationControlTask(void const *argument){
 				if (sector_schedule[s_nbr].update(timestamp) != sector_active_prev[s_nbr]){
 					if (sector_schedule[s_nbr].isActive()){
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr));
+						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
 					}
 					else{
 						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr));
+						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
 					}
 
 					sector_active_prev[s_nbr] = sector_schedule[s_nbr].isActive();

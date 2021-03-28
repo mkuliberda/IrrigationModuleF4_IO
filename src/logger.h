@@ -22,6 +22,7 @@
 
 #define LOG_TEXT_LEN 40
 #define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d %s: %s\n"
+#define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
 #define LOG_FILE  "LOG.TXT" 
 
 #define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Generic)
@@ -31,20 +32,29 @@ enum reporter_t { REPORTERS TOP };
 #define C(x) #x,
 const char * const reporter[] = { REPORTERS };
 
+enum log_msg_prio_t : uint8_t {
+	INFO,
+	LOW,
+	MEDIUM,
+	HIGH,
+	CRITICAL
+};
+
 struct log_time {
-	uint8_t hours;
-	uint8_t minutes;
-	uint8_t seconds;
-	uint8_t day;
-	uint8_t month;
-	uint8_t year;
+	uint8_t hours{};
+	uint8_t minutes{};
+	uint8_t seconds{};
+	uint8_t day{};
+	uint8_t month{};
+	uint8_t year{};
 };
 
 struct log_msg {
-	char 			text[LOG_TEXT_LEN];
-	uint8_t			len;
-	reporter_t 		reporter_id;
-	log_time		time;
+	char 			text[LOG_TEXT_LEN]{};
+	uint8_t			len{};
+	reporter_t 		reporter_id{};
+	log_msg_prio_t  priority{};
+	log_time		time{};
 };
 
 
@@ -54,7 +64,7 @@ private:
 	uint32_t log_text_max_len{ LOG_TEXT_LEN };
 	bool valid{ true };
 	std::string file_path{LOG_FILE};
-	const TCHAR log_format[38] = LOG_FORMAT;
+	const TCHAR log_format[LOG_FORMAT_LEN] = LOG_FORMAT;
 
 	HAL_FatFs_Logger() = default;
 
