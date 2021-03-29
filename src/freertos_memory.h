@@ -6,6 +6,15 @@
 #include "cmsis_os.h"
 #include "stdlib.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+void* malloc (size_t size);
+void free (void* ptr);
+#ifdef __cplusplus
+}
+#endif
+
 
 void *operator new(size_t size);
 void *operator new[](size_t size);

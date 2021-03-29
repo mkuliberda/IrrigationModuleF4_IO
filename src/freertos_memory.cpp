@@ -7,6 +7,22 @@
 
 #include "freertos_memory.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+void* malloc (size_t size){
+  /* Call the FreeRTOS version of malloc. */
+  return pvPortMalloc( size );
+}
+void free (void* ptr){
+   /* Call the FreeRTOS version of free. */
+   vPortFree( ptr );
+}
+
+#ifdef __cplusplus
+}
+#endif
+
 /*inline void *operator new(size_t size)
 {
 	void *p;
@@ -27,7 +43,7 @@ inline void operator delete(void *p) noexcept
 	p = NULL;
 }*/
 
-// Define the ‘new’ operator for C++ to use the freeRTOS memory management
+// Define the ï¿½newï¿½ operator for C++ to use the freeRTOS memory management
 // functions. THIS IS NOT OPTIONAL!
 //
 void *operator new(size_t size){
@@ -51,7 +67,7 @@ void *operator new(size_t size){
 }
 
 //
-// Define the ‘delete’ operator for C++ to use the freeRTOS memory management
+// Define the ï¿½deleteï¿½ operator for C++ to use the freeRTOS memory management
 // functions. THIS IS NOT OPTIONAL!
 //
 void operator delete(void *p) noexcept
@@ -88,7 +104,7 @@ void *operator new[](size_t size){
 }
 
 //
-// Define the ‘delete’ operator for C++ to use the freeRTOS memory management
+// Define the ï¿½deleteï¿½ operator for C++ to use the freeRTOS memory management
 // functions. THIS IS NOT OPTIONAL!
 //
 void operator delete[](void *p) noexcept
@@ -103,7 +119,7 @@ void operator delete[](void *p) noexcept
  p = NULL;
 }
 
-/* Optionally you can override the ‘nothrow’ versions as well.
+/* Optionally you can override the ï¿½nothrowï¿½ versions as well.
    This is useful if you want to catch failed allocs with your
    own debug code, or keep track of heap usage for example,
    rather than just eliminate exceptions.
