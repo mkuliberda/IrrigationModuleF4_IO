@@ -19,8 +19,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
+#include "cmsis_os.h"
+#include "task.h"
+
 
 /* USER CODE BEGIN 0 */
+TaskHandle_t xTaskToNotifyFromUsart2Rx = NULL;
+const UBaseType_t xArrayIndex = 1;
 
 /* USER CODE END 0 */
 
@@ -132,7 +137,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
     __HAL_LINKDMA(uartHandle,hdmatx,hdma_usart2_tx);
 
   /* USER CODE BEGIN USART2_MspInit 1 */
-
+    HAL_NVIC_SetPriority(USART2_IRQn, 7, 0);
+    HAL_NVIC_EnableIRQ(USART2_IRQn);
   /* USER CODE END USART2_MspInit 1 */
   }
   else if(uartHandle->Instance==USART3)
@@ -246,6 +252,29 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+  if (huart->Instance == USART2){
+       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    /* At this point xTaskToNotifyFromUsart2Rx should not be NULL as
+    a transmission was in progress. */
+    configASSERT( xTaskToNotifyFromUsart2Rx != NULL );
+
+    /* Notify the task that the transmission is complete. */
+    vTaskNotifyGiveFromISR( xTaskToNotifyFromUsart2Rx, &xHigherPriorityTaskWoken );
+
+    /* If xHigherPriorityTaskWoken is now set to pdTRUE then a
+    context switch should be performed to ensure the interrupt
+    returns directly to the highest priority task.  The macro used
+    for this purpose is dependent on the port in use and may be
+    called portEND_SWITCHING_ISR(). */
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+  //if (huart->Instance == USART2)  osSemaphoreRelease(uart2_busy_sem);
+}
 
 /* USER CODE END 1 */
 

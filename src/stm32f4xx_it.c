@@ -64,6 +64,8 @@ extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
 extern DMA_HandleTypeDef hdma_usart3_tx;
 extern TIM_HandleTypeDef htim6;
+extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN EV */
 
@@ -193,6 +195,8 @@ void DMA2_Stream6_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+void USART2_IRQHandler(void){
+  HAL_UART_IRQHandler(&huart2);
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

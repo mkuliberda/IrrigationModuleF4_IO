@@ -11,15 +11,21 @@
 #include "sector.h"
 #include "sensors.h"
 #include "logger.h"
+#include "usart.h"
 #include <map>
 #include <queue>
 
 typedef std::pair<log_msg_prio_t, log_msg*> PAIR;
-struct cmp {
+struct cmp_pair {
 	bool operator()(const PAIR &a, const PAIR &b) {
 		return a.first < b.first;
 	};
 };
+
+extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
+extern const UBaseType_t xArrayIndex;
+
+
 
 osThreadId SysMonitorTaskHandle;
 osThreadId SDCardTaskHandle;
@@ -30,8 +36,8 @@ osMailQId activities_box;
 osMailQDef(activities_box, 42, activity_msg);
 osMailQId exceptions_box;
 osMailQDef(exceptions_box, 6, exception_msg);
-osMailQId plants_box;
-osMailQDef(plants_box, 20, plant_msg);
+osMailQId plants_config_box;
+osMailQDef(plants_config_box, 20, plant_config_msg);
 osMailQId sys_logs_box;
 osMailQDef(sys_logs_box, 10, log_msg);
 osMailQId irg_logs_box;
@@ -312,8 +318,8 @@ void SDCardTask(void const *argument)
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
 	exception_msg *exception = nullptr;
 	exceptions_box = osMailCreate(osMailQ(exceptions_box), osThreadGetId());
-	plant_msg *plant = nullptr;
-	plants_box = osMailCreate(osMailQ(plants_box), osThreadGetId());
+	plant_config_msg *plant = nullptr;
+	plants_config_box = osMailCreate(osMailQ(plants_config_box), osThreadGetId());
 	osEvent evt;
 	log_msg *sys_message = nullptr;
 	log_msg *irg_message = nullptr;
@@ -358,13 +364,13 @@ void SDCardTask(void const *argument)
 									while (osMailPut(exceptions_box, exception) != osOK);
 								}
 								else if(config_line[0] == 'P'){	//format P1:Y,1,Pelargonia...
-									plant = (plant_msg*)osMailAlloc(plants_box, osWaitForever);
+									plant = (plant_config_msg*)osMailAlloc(plants_config_box, osWaitForever);
 									plant->sector_nbr = sector_nbr;
 									const std::string str(config_line);
 									plant->rain_exposed = str.substr(3,1) == "Y" ? true : false;
 									plant->type = atoi(str.substr(5,1).c_str());
 									str.copy(plant->name, MINIMUM(str.length() - 8, PLANT_NAME_LEN - 2), 7);
-									while (osMailPut(plants_box, plant) != osOK);
+									while (osMailPut(plants_config_box, plant) != osOK);
 								}
 							}
 							while (f_close(&config_file) != FR_OK);
@@ -416,7 +422,7 @@ void SDCardTask(void const *argument)
 				osMailFree(wls_logs_box, wls_message);
 			}while(evt.status == osEventMail);
 
-			std::priority_queue<PAIR, std::vector<PAIR>, cmp> logs_queue{};
+			std::priority_queue<PAIR, std::vector<PAIR>, cmp_pair> logs_queue{};
 			for (const auto &msg: msg_map ) {
 				logs_queue.push(msg);
 				}
@@ -444,25 +450,65 @@ void WirelessCommTask(void const *argument)
 	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 
-
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
-	//TODO: set time based on wireless communication from external computer
-	rtc_time.Hours = 18;
-	rtc_time.Minutes = 59;
-	rtc_time.Seconds = 50;
-	rtc_time.TimeFormat = 0;
-	rtc_time.DayLightSaving = 0;
-	rtc_date.WeekDay = RTC_WEEKDAY_MONDAY;
-	rtc_date.Date = 14;
-	rtc_date.Month = 9;
-	rtc_date.Year = 20;
-	HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-	HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 
-	osDelay(5000);
-	publishLogMessage("Acquired current time!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+	//TODO: implement USART communication as USART Broker class
+	// Format time, $yy-mm-dd,ddd,hh-mm-ss 
+	uint8_t rxBuffer[]{EXT_TIME_FORMAT};
+	uint8_t txBuffer[] = "$GET:{Time}";
+	 /* Store the handle of the calling task. */
+    xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
+	uint32_t ulNotificationValue;
+
+	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)txBuffer, sizeof(txBuffer)-1);
+	HAL_UART_Receive_DMA(&huart2, (uint8_t*)rxBuffer, sizeof(rxBuffer)-1);
+	ulNotificationValue = ulTaskNotifyTake( xArrayIndex, osWaitForever);
+	/* There are no transmissions in progress, so no tasks
+    to notify. */
+    xTaskToNotifyFromUsart2Rx = NULL;
+   /* if ulNotfication The transmission ended as expected. */
+	/* else The call to ulTaskNotifyTake() timed out. */	
+	if(rxBuffer[0] == '$')
+	{
+		std::string *time_str = new std::string{(char*)rxBuffer};
+		rtc_time.TimeFormat = 0;
+		//TODO: set time based on wireless communication from external computer
+		rtc_time.Hours = atoi(time_str->substr(14,2).c_str());
+		rtc_time.Minutes = atoi(time_str->substr(17,2).c_str());
+		rtc_time.Seconds = atoi(time_str->substr(20,2).c_str());
+		//rtc_time.DayLightSaving = 0;
+		std::string_view weekday = time_str->substr(10,3);
+		if(weekday == "Mon"){
+			rtc_date.WeekDay = RTC_WEEKDAY_MONDAY;
+		}
+		else if(weekday == "Tue"){
+			rtc_date.WeekDay = RTC_WEEKDAY_TUESDAY;
+		}
+		else if(weekday == "Wed"){
+			rtc_date.WeekDay = RTC_WEEKDAY_WEDNESDAY;
+		}
+		else if(weekday == "Thu"){
+			rtc_date.WeekDay = RTC_WEEKDAY_THURSDAY;
+		}
+		else if(weekday == "Fri"){
+			rtc_date.WeekDay = RTC_WEEKDAY_FRIDAY;
+		}
+		else if(weekday == "Sat"){
+			rtc_date.WeekDay = RTC_WEEKDAY_SATURDAY;
+		}
+		else if(weekday == "Sun"){
+			rtc_date.WeekDay = RTC_WEEKDAY_SUNDAY;
+		}
+		rtc_date.Date = atoi(time_str->substr(7,2).c_str());
+		rtc_date.Month = atoi(time_str->substr(4,2).c_str());
+		rtc_date.Year = atoi(time_str->substr(1,2).c_str());
+		HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+		HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+		delete time_str;
+	}
+
+	publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 	osSemaphoreRelease(time_rdy_sem);
-
 
 
 	for( ;; )
@@ -476,7 +522,7 @@ void IrrigationControlTask(void const *argument){
 
 	irg_logs_box = osMailCreate(osMailQ(irg_logs_box), osThreadGetId());
 	osEvent evt;
-	plant_msg *msg = nullptr;
+	plant_config_msg *msg = nullptr;
 
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
@@ -511,16 +557,16 @@ void IrrigationControlTask(void const *argument){
 	}
 
 	do{
-		evt = osMailGet(plants_box, 10);
+		evt = osMailGet(plants_config_box, 10);
 		if (evt.status == osEventMail){
-			msg = (plant_msg*)evt.value.p;
+			msg = (plant_config_msg*)evt.value.p;
 			if (msg->type == 1){
 				sector_builder[msg->sector_nbr].producePlantWithDMAMoistureSensor(msg->name, msg->rain_exposed);
 				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr)) + " got plant: " + msg->name;
 				publishLogMessage(text, irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::LOW);
 			}
 		}
-		osMailFree(plants_box, msg);
+		osMailFree(plants_config_box, msg);
 	}while(evt.status == osEventMail);
 
 	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){

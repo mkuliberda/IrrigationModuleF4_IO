@@ -25,22 +25,23 @@
 #include "stm32f4xx_hal_rtc.h"
 
 #define SECTORS_AMOUNT 4
+#define EXT_TIME_FORMAT "$20-09-14,Mon,18-59-50"
 
 struct activity_msg{
-	uint8_t sector_nbr;
-	activity_s activity;
+	uint8_t sector_nbr{};
+	activity_s activity{};
 };
 
 struct exception_msg{
-	uint8_t sector_nbr;
-	exception_s exception;
+	uint8_t sector_nbr{};
+	exception_s exception{};
 };
 
-struct plant_msg{
+struct plant_config_msg{
 	char	name[PLANT_NAME_LEN] = "";
-	uint8_t sector_nbr;
-	bool	rain_exposed;
-	uint8_t type;
+	uint8_t sector_nbr{};
+	bool	rain_exposed{};
+	uint8_t type{};
 };
 
 
@@ -49,7 +50,6 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 /* GetTimerTaskMemory prototype (linked to static allocation support) */
 void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, StackType_t **ppxTimerTaskStackBuffer, uint32_t *pulTimerTaskStackSize );
 void MX_FREERTOS_Init(void);
-
 
 #ifdef __cplusplus
 }
