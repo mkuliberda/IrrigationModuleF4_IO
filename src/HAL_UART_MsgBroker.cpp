@@ -101,6 +101,7 @@ bool HAL_UART_MsgBroker::requestData(const recipient_t& _recipient, const std::s
 bool HAL_UART_MsgBroker::transmit(const std::string& _str){
 	int32_t bytes_to_send = _str.length();
 	uint32_t pos = 0;
+	uint8_t retries = 0;
 	bool success = false;
 	while(bytes_to_send > 0){
 		std::memset(txBuffer, '\0', BUFFER_SIZE);
@@ -110,10 +111,13 @@ bool HAL_UART_MsgBroker::transmit(const std::string& _str){
 			bytes_to_send -= BUFFER_SIZE;
 			pos += BUFFER_SIZE;
 			success = true;
+			retries = 0;
 		}
 		else{
+			retries++;
 			success = false;
 		}
+		if (retries > 20) break;
 	}
 	return success;
 } 
