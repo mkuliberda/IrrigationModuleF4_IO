@@ -37,7 +37,7 @@ bool HAL_UART_MsgBroker::sendMsg(const recipient_t& _recipient, const std::strin
 	return result;
 }
 
-bool HAL_UART_MsgBroker::publishData(const recipient_t& _recipient, const char* _publisher, std::unordered_map<std::string, int32_t> _values)
+bool HAL_UART_MsgBroker::publishData(const recipient_t& _recipient, const char* _publisher, std::unordered_map<const char*, int32_t> _values)
 {
 	std::string str_msg{ "{\"" };
 	str_msg += _publisher;
