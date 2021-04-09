@@ -14,6 +14,8 @@
 #include "usart.h"
 #include <map>
 #include <queue>
+#include "HAL_UART_MsgBroker.h"
+#include "MsgBrokerFactory.h"
 
 typedef std::pair<log_msg_prio_t, log_msg*> PAIR;
 struct cmp_pair {
@@ -23,6 +25,7 @@ struct cmp_pair {
 };
 
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
+extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
 extern const UBaseType_t xArrayIndex;
 
 
@@ -455,16 +458,18 @@ void WirelessCommTask(void const *argument)
 	//TODO: implement USART communication as USART Broker class
 	// Format time, $yy-mm-dd,ddd,hh-mm-ss 
 	uint8_t rxBuffer[]{EXT_TIME_FORMAT};
-	uint8_t txBuffer[] = "$GET:{Time}";
 	 /* Store the handle of the calling task. */
     xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
-	uint32_t ulNotificationValue;
+	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
 
-	HAL_UART_Transmit_DMA(&huart2, (uint8_t*)txBuffer, sizeof(txBuffer)-1);
+	MsgBrokerPtr p_broker;
+	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
+	p_broker->requestData(recipient_t::ntp_server, "CurrentTime");
+	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
+	//xTaskToNotifyFromUsart2Tx = NULL;
+
 	HAL_UART_Receive_DMA(&huart2, (uint8_t*)rxBuffer, sizeof(rxBuffer)-1);
-	ulNotificationValue = ulTaskNotifyTake( xArrayIndex, osWaitForever);
-	/* There are no transmissions in progress, so no tasks
-    to notify. */
+	ulTaskNotifyTake( xArrayIndex, osWaitForever);
     xTaskToNotifyFromUsart2Rx = NULL;
    /* if ulNotfication The transmission ended as expected. */
 	/* else The call to ulTaskNotifyTake() timed out. */	
@@ -513,8 +518,9 @@ void WirelessCommTask(void const *argument)
 
 	for( ;; )
 	{
+		p_broker->sendMsg(recipient_t::google_home, "I'm alive!");
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-		osDelay(20);
+		osDelay(200);
 	}
 }
 

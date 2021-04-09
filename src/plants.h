@@ -34,7 +34,12 @@ struct PlantInfo_s{
 //Decorator design pattern used for plants
 class PlantInterface {
 public:
-	virtual ~PlantInterface() {}
+	//PlantInterface(const PlantInterface&) = default;
+	//PlantInterface& operator= (const PlantInterface&) = default;
+	//PlantInterface(PlantInterface &&) = default;
+	//PlantInterface& operator= (PlantInterface &&) = default;
+
+	virtual ~PlantInterface() = default; 
 	virtual float getMoisturePercent() = 0;
 	virtual bool setMoisturePercent(const float &_moisture) = 0;
 	virtual std::string getName() = 0;
@@ -51,9 +56,9 @@ public:
 class Plant : public PlantInterface {
 private:
 
-	plant_type_t									p_type = plant_type_t::plant_only;
+	plant_type_t									p_type{plant_type_t::plant_only};
 	std::string										name;
-	float											soil_moisture_percent = -1000;
+	float											soil_moisture_percent{-1000};
 	uint8_t											id;
 	bool											rain_exposed;
 
@@ -76,8 +81,7 @@ public:
 		p_type = plant_only;
 	}
 
-	~Plant()
-	{}
+	~Plant() = default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	Plant(Plant const &) = delete;				
@@ -134,18 +138,20 @@ public:
 	PlantWithDMAMoistureSensor(PlantInterface *core, const float& _ref_voltage = 3.3, const uint32_t& _quantization_levels = 4095) :
 		PlantWithSensor(core),
 		ref_voltage(_ref_voltage),
-		quantization_levels(_quantization_levels) {
-		setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
+		quantization_levels(_quantization_levels){
+		PlantWithSensor::setPlantType(plant_type_t::plant_with_dma_moisture_sensor);
+		//setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
 	}
 
 	PlantWithDMAMoistureSensor(PlantInterface *core, const float&& _ref_voltage = 3.3, const uint32_t&& _quantization_levels = 4095) :
 		PlantWithSensor(core),
 		ref_voltage(std::move(_ref_voltage)),
 		quantization_levels(std::move(_quantization_levels)) {
-		setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
+		PlantWithSensor::setPlantType(plant_type_t::plant_with_dma_moisture_sensor);
+		//setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
 	}
 
-	~PlantWithDMAMoistureSensor() {}
+	~PlantWithDMAMoistureSensor() = default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	PlantWithDMAMoistureSensor(PlantWithDMAMoistureSensor const &) = delete;

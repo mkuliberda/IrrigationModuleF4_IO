@@ -105,7 +105,7 @@ void PlantWithDMAMoistureSensor::updateRaw(const uint32_t& _raw_measurement) {
 }
 
 void PlantWithDMAMoistureSensor::setPlantType(const plant_type_t& _p_type) {
-	PlantWithSensor::setPlantType(plant_type_t::plant_with_dma_moisture_sensor);
+	PlantWithSensor::setPlantType(_p_type);
 }
 
 plant_type_t PlantWithDMAMoistureSensor::getPlantType() {
