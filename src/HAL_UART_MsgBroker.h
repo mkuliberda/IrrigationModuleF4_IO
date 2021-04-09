@@ -7,7 +7,7 @@
 #include <string>
 #include "stm32f4xx_hal.h"
 
-#define BUFFER_SIZE 128
+#define BUFFER_SIZE 64
 
 class HAL_UART_MsgBroker :
 	public MsgBroker

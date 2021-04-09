@@ -99,13 +99,23 @@ bool HAL_UART_MsgBroker::requestData(const recipient_t& _recipient, const std::s
 }
 
 bool HAL_UART_MsgBroker::transmit(const std::string& _str){
-	std::memset(txBuffer,'\0',BUFFER_SIZE);
-    _str.copy((char*)txBuffer, MINIMUM(_str.length(), BUFFER_SIZE));
-	if (HAL_UART_Transmit_DMA(UART_Handle, txBuffer, MINIMUM(_str.length(), BUFFER_SIZE)) == HAL_OK){
-		ulTaskNotifyTake( xArrayIndex, osWaitForever);
-		return true;
+	int32_t bytes_to_send = _str.length();
+	uint32_t pos = 0;
+	bool success = false;
+	while(bytes_to_send > 0){
+		std::memset(txBuffer, '\0', BUFFER_SIZE);
+		_str.copy((char*)txBuffer, MINIMUM(bytes_to_send, BUFFER_SIZE), pos);
+		if (HAL_UART_Transmit_DMA(UART_Handle, txBuffer, MINIMUM(bytes_to_send, BUFFER_SIZE)) == HAL_OK){
+			ulTaskNotifyTake( xArrayIndex, osWaitForever);
+			bytes_to_send -= BUFFER_SIZE;
+			pos += BUFFER_SIZE;
+			success = true;
+		}
+		else{
+			success = false;
+		}
 	}
-	return false;
+	return success;
 } 
 
 
