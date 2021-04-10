@@ -156,18 +156,18 @@ E001:20-05-15,00-00-01,20-05-15,16-00-00
 E002:20-09-14,19-05-00,20-09-14,19-05-30*/
 bool Scheduler::addActivity(const char *_activity){
 	const std::string str(_activity);
-	if (str.length() == 44){
+	if (str.length() == ACTIVITY_LENGTH){
 		//try:
 		activity_s activity = {0,0,{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0},{0,0,0}};
-		if (str.substr(0,1) == "A" && str.substr(4,1) == ":" && this->vActivities.size() < this->activities_limit){
-			activity.id = atoi(str.substr(1,3).c_str());
-			activity.begin.year = atoi(str.substr(5,2).c_str());
-			activity.begin.month = atoi(str.substr(8,2).c_str());
-			activity.begin.day = atoi(str.substr(11,2).c_str());
-			activity.end.year = atoi(str.substr(14,2).c_str());
-			activity.end.month = atoi(str.substr(17,2).c_str());
-			activity.end.day = atoi(str.substr(20,2).c_str());
-			const std::string weekday_str = str.substr(23,3);
+		if (str.substr(0,1) == "A" && str.substr(ACTIVITY_SYM_POS, ACTIVITY_SYM_LEN) == ":" && this->vActivities.size() < this->activities_limit){
+			activity.id = atoi(str.substr(ACTIVITY_ID_POS, ACTIVITY_ID_LEN).c_str());
+			activity.begin.year = atoi(str.substr(ACTIVITY_BEGIN_YR_POS, ACTIVITY_BEGIN_YR_LEN).c_str());
+			activity.begin.month = atoi(str.substr(ACTIVITY_BEGIN_MO_POS, ACTIVITY_BEGIN_MO_LEN).c_str());
+			activity.begin.day = atoi(str.substr(ACTIVITY_BEGIN_DY_POS, ACTIVITY_BEGIN_DY_LEN).c_str());
+			activity.end.year = atoi(str.substr(ACTIVITY_END_YR_POS, ACTIVITY_END_YR_LEN).c_str());
+			activity.end.month = atoi(str.substr(ACTIVITY_END_MO_POS, ACTIVITY_END_MO_LEN).c_str());
+			activity.end.day = atoi(str.substr(ACTIVITY_END_DY_POS, ACTIVITY_END_DY_LEN).c_str());
+			const std::string weekday_str = str.substr(ACTIVITY_DAY_OF_WEEK_POS, ACTIVITY_DAY_OF_WEEK_LEN);
 			if (weekday_str == "MON"){
 				activity.weekday = ((uint8_t)0x01);
 			}
@@ -192,12 +192,12 @@ bool Scheduler::addActivity(const char *_activity){
 			else{
 				activity.weekday = ((uint8_t)0xFF);
 			}
-			activity.start.hours = atoi(str.substr(27,2).c_str());
-			activity.start.minutes = atoi(str.substr(30,2).c_str());
-			activity.start.seconds = atoi(str.substr(33,2).c_str());
-			activity.duration.hours = atoi(str.substr(36,2).c_str());
-			activity.duration.minutes = atoi(str.substr(39,2).c_str());
-			activity.duration.seconds = atoi(str.substr(42,2).c_str());
+			activity.start.hours = atoi(str.substr(ACTIVITY_BEGIN_HR_POS, ACTIVITY_BEGIN_HR_LEN).c_str());
+			activity.start.minutes = atoi(str.substr(ACTIVITY_BEGIN_MIN_POS, ACTIVITY_BEGIN_MIN_LEN).c_str());
+			activity.start.seconds = atoi(str.substr(ACTIVITY_BEGIN_SEC_POS, ACTIVITY_BEGIN_SEC_LEN).c_str());
+			activity.duration.hours = atoi(str.substr(ACTIVITY_DURATION_HR_POS, ACTIVITY_DURATION_HR_LEN).c_str());
+			activity.duration.minutes = atoi(str.substr(ACTIVITY_DURATION_MIN_POS, ACTIVITY_DURATION_MIN_LEN).c_str());
+			activity.duration.seconds = atoi(str.substr(ACTIVITY_DURATION_SEC_POS, ACTIVITY_DURATION_SEC_LEN).c_str());
 			this->vActivities.push_back(activity);
 			this->vActivities.shrink_to_fit();
 			this->setAvailable();
@@ -230,23 +230,23 @@ bool Scheduler::addException(const struct exception_s &_exception){
 /*E001:20-05-15,00-00-01,20-05-15,16-00-00*/
 bool Scheduler::addException(const char *_exception){
 	const std::string str(_exception);
-	if (str.length() == 40){
+	if (str.length() == EXCEPTION_LENGTH){
 		//try:
 		exception_s exception = {0,{0,0,0,0,0,0},{0,0,0,0,0,0}};
-		if (str.substr(0,1) == "E" && str.substr(4,1) == ":" && this->vExceptions.size() < this->exceptions_limit){
-			exception.id = atoi(str.substr(1,3).c_str());
-			exception.begin.year = atoi(str.substr(5,2).c_str());
-			exception.begin.month = atoi(str.substr(8,2).c_str());
-			exception.begin.day = atoi(str.substr(11,2).c_str());
-			exception.begin.hours = atoi(str.substr(14,2).c_str());
-			exception.begin.minutes = atoi(str.substr(17,2).c_str());
-			exception.begin.seconds = atoi(str.substr(20,2).c_str());
-			exception.end.year = atoi(str.substr(23,2).c_str());
-			exception.end.month = atoi(str.substr(26,2).c_str());
-			exception.end.day = atoi(str.substr(29,2).c_str());
-			exception.end.hours = atoi(str.substr(32,2).c_str());
-			exception.end.minutes = atoi(str.substr(35,2).c_str());
-			exception.end.seconds = atoi(str.substr(38,2).c_str());
+		if (str.substr(0,1) == "E" && str.substr(EXCEPTION_SYM_POS,EXCEPTION_SYM_LEN) == ":" && this->vExceptions.size() < this->exceptions_limit){
+			exception.id = atoi(str.substr(EXCEPTION_ID_POS, EXCEPTION_ID_LEN).c_str());
+			exception.begin.year = atoi(str.substr(EXCEPTION_BEGIN_YR_POS, EXCEPTION_BEGIN_YR_LEN).c_str());
+			exception.begin.month = atoi(str.substr(EXCEPTION_BEGIN_MO_POS, EXCEPTION_BEGIN_MO_LEN).c_str());
+			exception.begin.day = atoi(str.substr(EXCEPTION_BEGIN_DY_POS, EXCEPTION_BEGIN_DY_LEN).c_str());
+			exception.begin.hours = atoi(str.substr(EXCEPTION_BEGIN_HR_POS, EXCEPTION_BEGIN_HR_LEN).c_str());
+			exception.begin.minutes = atoi(str.substr(EXCEPTION_BEGIN_MIN_POS, EXCEPTION_BEGIN_MIN_LEN).c_str());
+			exception.begin.seconds = atoi(str.substr(EXCEPTION_BEGIN_SEC_POS, EXCEPTION_BEGIN_SEC_LEN).c_str());
+			exception.end.year = atoi(str.substr(EXCEPTION_END_YR_POS, EXCEPTION_END_YR_LEN).c_str());
+			exception.end.month = atoi(str.substr(EXCEPTION_END_MO_POS, EXCEPTION_END_MO_LEN).c_str());
+			exception.end.day = atoi(str.substr(EXCEPTION_END_DY_POS, EXCEPTION_END_DY_LEN).c_str());
+			exception.end.hours = atoi(str.substr(EXCEPTION_END_HR_POS, EXCEPTION_END_HR_LEN).c_str());
+			exception.end.minutes = atoi(str.substr(EXCEPTION_END_MIN_POS, EXCEPTION_END_MIN_LEN).c_str());
+			exception.end.seconds = atoi(str.substr(EXCEPTION_END_SEC_POS, EXCEPTION_END_SEC_LEN).c_str());
 			this->vExceptions.push_back(exception);
 			this->vExceptions.shrink_to_fit();
 			return true;
@@ -262,11 +262,11 @@ bool Scheduler::addException(const char *_exception){
 
 bool Scheduler::addLine(const char *_line){
 	const std::string str(_line);
-	if (str.length() == 40 || str.length() == 44 ){
-		if (str.substr(0,1) == "E" && str.substr(4,1) == ":"){
+	if (str.length() == EXCEPTION_LENGTH || str.length() == ACTIVITY_LENGTH ){
+		if (str.substr(0,1) == "E" && str.substr(EXCEPTION_SYM_POS, EXCEPTION_SYM_LEN) == ":"){
 			return this->addException(_line);
 		}
-		else if (str.substr(0,1) == "A" && str.substr(4,1) == ":"){
+		else if (str.substr(0,1) == "A" && str.substr(ACTIVITY_SYM_POS, ACTIVITY_SYM_LEN) == ":"){
 			return this->addActivity(_line);
 		}
 		else{
@@ -297,17 +297,16 @@ const uint8_t Scheduler::getExceptionsCount(void) const{
 activity_s Scheduler::parseActivity(const char *_line){
 	const std::string str(_line);
 	activity_s activity = {0xff,0,{0,0,0,0,0,0},{0,0,0,0,0,0},{0,0,0},{0,0,0}};
-	if (str.length() == 42){
-		if (str.substr(0,1) == "A" && str.substr(2,1) == ":")
-		{
-			activity.id = atoi(str.substr(1,1).c_str());
-			activity.begin.year = atoi(str.substr(3,2).c_str());
-			activity.begin.month = atoi(str.substr(6,2).c_str());
-			activity.begin.day = atoi(str.substr(9,2).c_str());
-			activity.end.year = atoi(str.substr(12,2).c_str());
-			activity.end.month = atoi(str.substr(15,2).c_str());
-			activity.end.day = atoi(str.substr(18,2).c_str());
-			const std::string weekday_str = str.substr(21,3);
+	if (str.length() == ACTIVITY_LENGTH){
+		if (str.substr(0,1) == "A" && str.substr(ACTIVITY_SYM_POS,ACTIVITY_SYM_LEN) == ":"){
+			activity.id = atoi(str.substr(ACTIVITY_ID_POS, ACTIVITY_ID_LEN).c_str());
+			activity.begin.year = atoi(str.substr(ACTIVITY_BEGIN_YR_POS, ACTIVITY_BEGIN_YR_LEN).c_str());
+			activity.begin.month = atoi(str.substr(ACTIVITY_BEGIN_MO_POS, ACTIVITY_BEGIN_MO_LEN).c_str());
+			activity.begin.day = atoi(str.substr(ACTIVITY_BEGIN_DY_POS, ACTIVITY_BEGIN_DY_LEN).c_str());
+			activity.end.year = atoi(str.substr(ACTIVITY_END_YR_POS, ACTIVITY_END_YR_LEN).c_str());
+			activity.end.month = atoi(str.substr(ACTIVITY_END_MO_POS, ACTIVITY_END_MO_LEN).c_str());
+			activity.end.day = atoi(str.substr(ACTIVITY_END_DY_POS, ACTIVITY_END_DY_LEN).c_str());
+			const std::string weekday_str = str.substr(ACTIVITY_DAY_OF_WEEK_POS, ACTIVITY_DAY_OF_WEEK_LEN);
 			if (weekday_str == "MON"){
 				activity.weekday = ((uint8_t)0x01);
 			}
@@ -332,12 +331,12 @@ activity_s Scheduler::parseActivity(const char *_line){
 			else{
 				activity.weekday = ((uint8_t)0xFF);
 			}
-			activity.start.hours = atoi(str.substr(25,2).c_str());
-			activity.start.minutes = atoi(str.substr(28,2).c_str());
-			activity.start.seconds = atoi(str.substr(31,2).c_str());
-			activity.duration.hours = atoi(str.substr(34,2).c_str());
-			activity.duration.minutes = atoi(str.substr(37,2).c_str());
-			activity.duration.seconds = atoi(str.substr(40,2).c_str());
+			activity.start.hours = atoi(str.substr(ACTIVITY_BEGIN_HR_POS, ACTIVITY_BEGIN_HR_LEN).c_str());
+			activity.start.minutes = atoi(str.substr(ACTIVITY_BEGIN_MIN_POS, ACTIVITY_BEGIN_MIN_LEN).c_str());
+			activity.start.seconds = atoi(str.substr(ACTIVITY_BEGIN_SEC_POS, ACTIVITY_BEGIN_SEC_LEN).c_str());
+			activity.duration.hours = atoi(str.substr(ACTIVITY_DURATION_HR_POS, ACTIVITY_DURATION_HR_LEN).c_str());
+			activity.duration.minutes = atoi(str.substr(ACTIVITY_DURATION_MIN_POS, ACTIVITY_DURATION_MIN_LEN).c_str());
+			activity.duration.seconds = atoi(str.substr(ACTIVITY_DURATION_SEC_POS, ACTIVITY_DURATION_SEC_LEN).c_str());
 		}
 	}
 	return activity;
@@ -346,21 +345,21 @@ activity_s Scheduler::parseActivity(const char *_line){
 exception_s Scheduler::parseException(const char *_line){
 	const std::string str(_line);
 	exception_s exception = {0xff,{0,0,0,0,0,0},{0,0,0,0,0,0}};
-	if (str.length() == 39){
-		if (str.substr(0,1) == "E" && str.substr(2,1) == ":"){
-			exception.id = atoi(str.substr(1,1).c_str());
-			exception.begin.year = atoi(str.substr(3,2).c_str());
-			exception.begin.month = atoi(str.substr(6,2).c_str());
-			exception.begin.day = atoi(str.substr(9,2).c_str());
-			exception.begin.hours = atoi(str.substr(12,2).c_str());
-			exception.begin.minutes = atoi(str.substr(15,2).c_str());
-			exception.begin.seconds = atoi(str.substr(18,2).c_str());
-			exception.end.year = atoi(str.substr(21,2).c_str());
-			exception.end.month = atoi(str.substr(24,2).c_str());
-			exception.end.day = atoi(str.substr(27,2).c_str());
-			exception.end.hours = atoi(str.substr(30,2).c_str());
-			exception.end.minutes = atoi(str.substr(33,2).c_str());
-			exception.end.seconds = atoi(str.substr(36,2).c_str());
+	if (str.length() == EXCEPTION_LENGTH){
+		if (str.substr(0,1) == "E" && str.substr(EXCEPTION_SYM_POS, EXCEPTION_SYM_LEN) == ":"){
+			exception.id = atoi(str.substr(EXCEPTION_ID_POS, EXCEPTION_ID_LEN).c_str());
+			exception.begin.year = atoi(str.substr(EXCEPTION_BEGIN_YR_POS, EXCEPTION_BEGIN_YR_LEN).c_str());
+			exception.begin.month = atoi(str.substr(EXCEPTION_BEGIN_MO_POS, EXCEPTION_BEGIN_MO_LEN).c_str());
+			exception.begin.day = atoi(str.substr(EXCEPTION_BEGIN_DY_POS, EXCEPTION_BEGIN_DY_LEN).c_str());
+			exception.begin.hours = atoi(str.substr(EXCEPTION_BEGIN_HR_POS, EXCEPTION_BEGIN_HR_LEN).c_str());
+			exception.begin.minutes = atoi(str.substr(EXCEPTION_BEGIN_MIN_POS, EXCEPTION_BEGIN_MIN_LEN).c_str());
+			exception.begin.seconds = atoi(str.substr(EXCEPTION_BEGIN_SEC_POS, EXCEPTION_BEGIN_SEC_LEN).c_str());
+			exception.end.year = atoi(str.substr(EXCEPTION_END_YR_POS, EXCEPTION_END_YR_LEN).c_str());
+			exception.end.month = atoi(str.substr(EXCEPTION_END_MO_POS, EXCEPTION_END_MO_LEN).c_str());
+			exception.end.day = atoi(str.substr(EXCEPTION_END_DY_POS, EXCEPTION_END_DY_LEN).c_str());
+			exception.end.hours = atoi(str.substr(EXCEPTION_END_HR_POS, EXCEPTION_END_HR_LEN).c_str());
+			exception.end.minutes = atoi(str.substr(EXCEPTION_END_MIN_POS, EXCEPTION_END_MIN_LEN).c_str());
+			exception.end.seconds = atoi(str.substr(EXCEPTION_END_SEC_POS, EXCEPTION_END_SEC_LEN).c_str());
 		}
 	}
 	return exception;

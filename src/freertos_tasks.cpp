@@ -352,7 +352,7 @@ void SDCardTask(void const *argument)
 						uint8_t sector_nbr = atoi(sdcard_sched_filename.substr(6,1).c_str()) - 1;
 						/* Open a text file */
 						if (f_open(&config_file, file_info.fname, FA_READ) == FR_OK){
-							char config_line[43] = "";
+							char config_line[MAXIMUM(ACTIVITY_LENGTH+1, EXCEPTION_LENGTH+1)] = "";
 							while (f_gets(config_line, sizeof(config_line), &config_file)){
 								if(config_line[0] == 'A'){
 									activity = (activity_msg*)osMailAlloc(activities_box, osWaitForever);
@@ -366,13 +366,13 @@ void SDCardTask(void const *argument)
 									exception->exception = Scheduler::parseException(config_line);
 									while (osMailPut(exceptions_box, exception) != osOK);
 								}
-								else if(config_line[0] == 'P'){	//format P1:Y,1,Pelargonia...
+								else if(config_line[0] == 'P'){	//format P001:Y,1,Pelargonia...
 									plant = (plant_config_msg*)osMailAlloc(plants_config_box, osWaitForever);
 									plant->sector_nbr = sector_nbr;
 									const std::string str(config_line);
-									plant->rain_exposed = str.substr(3,1) == "Y" ? true : false;
-									plant->type = atoi(str.substr(5,1).c_str());
-									str.copy(plant->name, MINIMUM(str.length() - 8, PLANT_NAME_LEN - 2), 7);
+									plant->rain_exposed = str.substr(5,1) == "Y" ? true : false;
+									plant->type = atoi(str.substr(7,1).c_str());
+									str.copy(plant->name, MINIMUM(str.length() - 8, PLANT_NAME_LEN - 2), 9);
 									while (osMailPut(plants_config_box, plant) != osOK);
 								}
 							}

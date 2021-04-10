@@ -11,7 +11,7 @@ class SchedulerTest : public testing::Test {
     delete schedule1;
   }
   
-  Scheduler *schedule1;
+  Scheduler *schedule1{};
   uint8_t exc_limit = 4;
   uint8_t act_limit = 10;
 };
@@ -70,7 +70,6 @@ TEST_F(SchedulerTest, addExceptionAsStringWithLimitReached) {
     }
   }while(++exception_cnt < (schedule1->getExceptionsCountLimit() + 2));
   EXPECT_EQ(schedule1->getExceptionsCountLimit(), schedule1->getExceptionsCount());
-
-}
+  }
 
 }
