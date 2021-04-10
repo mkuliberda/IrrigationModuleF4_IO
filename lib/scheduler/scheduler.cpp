@@ -230,7 +230,7 @@ bool Scheduler::addException(const struct exception_s &_exception){
 /*E1:20-05-15,00-00-01,20-05-15,16-00-00*/
 bool Scheduler::addException(const char *_exception){
 	const std::string str(_exception);
-	if (str.length() == 39){
+	if (str.length() == 38){
 		//try:
 		exception_s exception = {0,{0,0,0,0,0,0},{0,0,0,0,0,0}};
 		if (str.substr(0,1) == "E" && str.substr(2,1) == ":" && this->vExceptions.size() <= this->exceptions_limit){
