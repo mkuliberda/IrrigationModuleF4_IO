@@ -372,7 +372,7 @@ void SDCardTask(void const *argument)
 									const std::string str(config_line);
 									plant->rain_exposed = str.substr(5,1) == "Y" ? true : false;
 									plant->type = atoi(str.substr(7,1).c_str());
-									str.copy(plant->name, MINIMUM(str.length() - 8, PLANT_NAME_LEN - 2), 9);
+									str.copy(plant->name, MINIMUM(str.length() - 10, PLANT_NAME_LEN - 2), 9);
 									while (osMailPut(plants_config_box, plant) != osOK);
 								}
 							}
