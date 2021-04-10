@@ -116,7 +116,7 @@ struct exception_s{
 	period_s end;
 };
 
-class Scheduler{
+class Scheduler final{
 
 private:
 	std::vector<activity_s> 				vActivities;
