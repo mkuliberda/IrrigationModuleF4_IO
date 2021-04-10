@@ -25,7 +25,8 @@
 #include "stm32f4xx_hal_rtc.h"
 
 #define SECTORS_AMOUNT 4
-#define EXT_TIME_FORMAT "\"result\":\"20-09-14,Mon,18-59-50\""
+//{{NTP>SYS}:[{"CTD":"20-09-14,Mon,18-59-50"}]}
+#define EXT_TIME_FORMAT "{{NTP>SYS}:[{\"CTD\":\"20-09-14,Mon,18-59-50\"}]}" //Current Time Date
 
 struct activity_msg{
 	uint8_t sector_nbr{};

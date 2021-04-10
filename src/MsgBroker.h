@@ -6,6 +6,11 @@
 #include <memory>
 #include <unordered_map>
 
+#define RASPBERRY_PI_STR "rpi\\"
+#define GOOGLE_HOME_STR "goo\\"
+#define NTP_SERVER_STR "ntp\\"
+#define BROADCAST_STR "all\\"
+
 
 enum recipient_t : uint8_t {
 	ntp_server,

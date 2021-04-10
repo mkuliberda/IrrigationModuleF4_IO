@@ -23,8 +23,8 @@ public:
 	bool requestData(const recipient_t& _recipient, const std::string& _data_key) override;
 private:
     bool transmit(const std::string& _str); 
-	const char *pub_hdr = "PUB\\";
-	const char *get_hdr = "GET\\";
+	const char *pub_hdr = "$PUB\\";
+	const char *get_hdr = "$GET\\";
 	UART_HandleTypeDef *UART_Handle{};
 	uint8_t txBuffer[BUFFER_SIZE]{};
 };

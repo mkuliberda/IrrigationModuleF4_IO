@@ -16,19 +16,21 @@ bool HAL_UART_MsgBroker::assignDevice(void * DevHandle)
 bool HAL_UART_MsgBroker::sendMsg(const recipient_t& _recipient, const std::string& _msg)
 {
 	std::string str_msg{pub_hdr};
+	const std::string msg_start{"{\"Msg\":\""};
+	const std::string msg_end{"\"}\n"};
 	bool result = false;
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
-		str_msg += "rpi\\{\"Msg\":\"" + _msg + "\"}\n";;
+		str_msg += RASPBERRY_PI_STR + msg_start + _msg + msg_end;
         result = transmit(str_msg);
 		break;
 	case recipient_t::google_home:
-		str_msg += "google_home\\{\"Msg\":\"" + _msg + "\"}\n";
+		str_msg += GOOGLE_HOME_STR + msg_start + _msg + msg_end;
         result = transmit(str_msg);
 		break;
 	case recipient_t::broadcast:
-		str_msg += "all\\{\"Msg\":\"" + _msg + "\"}\n";
+		str_msg += BROADCAST_STR + msg_start + _msg + msg_end;
         result = transmit(str_msg);
 		break;
 	default:
@@ -57,15 +59,15 @@ bool HAL_UART_MsgBroker::publishData(const recipient_t& _recipient, const char* 
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
-		str_msg = (static_cast<std::string>(pub_hdr) + "rpi\\" + str_msg);
+		str_msg = (static_cast<std::string>(pub_hdr) + RASPBERRY_PI_STR + str_msg);
         result = transmit(str_msg);
 		break;
 	case recipient_t::google_home:
-		str_msg = (static_cast<std::string>(pub_hdr) + "google_home\\" + str_msg);
+		str_msg = (static_cast<std::string>(pub_hdr) + GOOGLE_HOME_STR + str_msg);
 		result = transmit(str_msg);
 		break;
 	case recipient_t::broadcast:
-		str_msg = (static_cast<std::string>(pub_hdr) + "all\\" + str_msg);
+		str_msg = (static_cast<std::string>(pub_hdr) + BROADCAST_STR + str_msg);
 		result = transmit(str_msg);
 		break;
 	default:
@@ -81,15 +83,15 @@ bool HAL_UART_MsgBroker::requestData(const recipient_t& _recipient, const std::s
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
-		str_msg += "rpi\\" + _data_key;
+		str_msg += RASPBERRY_PI_STR + _data_key;
 		result = transmit(str_msg);
 		break;
 	case recipient_t::google_home:
-		str_msg += "google_home\\" + _data_key;
+		str_msg += GOOGLE_HOME_STR + _data_key;
 		result = transmit(str_msg);
 		break;
 	case recipient_t::ntp_server:
-		str_msg += "ntp_server\\" + _data_key;
+		str_msg += NTP_SERVER_STR + _data_key;
         result = transmit(str_msg);
 		break;
 	default:

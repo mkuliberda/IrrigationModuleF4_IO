@@ -464,7 +464,9 @@ void WirelessCommTask(void const *argument)
 
 	MsgBrokerPtr p_broker;
 	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
-	p_broker->requestData(recipient_t::ntp_server, "CurrentTime");
+	if (!p_broker->requestData(recipient_t::ntp_server, "CurrentTime")){
+		publishLogMessage("CurrentTime transmit request failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+	}
 	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
 	//xTaskToNotifyFromUsart2Tx = NULL;
 
@@ -473,43 +475,46 @@ void WirelessCommTask(void const *argument)
     xTaskToNotifyFromUsart2Rx = NULL;
    /* if ulNotfication The transmission ended as expected. */
 	/* else The call to ulTaskNotifyTake() timed out. */	
-	if(rxBuffer[0] == '$')
+	if(rxBuffer[0] == '{')
 	{
-		std::string *time_str = new std::string{(char*)rxBuffer};
-		rtc_time.TimeFormat = 0;
-		//TODO: set time based on wireless communication from external computer
-		rtc_time.Hours = atoi(time_str->substr(14,2).c_str());
-		rtc_time.Minutes = atoi(time_str->substr(17,2).c_str());
-		rtc_time.Seconds = atoi(time_str->substr(20,2).c_str());
-		//rtc_time.DayLightSaving = 0;
-		std::string_view weekday = time_str->substr(10,3);
-		if(weekday == "Mon"){
-			rtc_date.WeekDay = RTC_WEEKDAY_MONDAY;
+		if(rxBuffer[2] == 'N' && rxBuffer[3] == 'T' && rxBuffer[4] == 'P'){
+			std::string *time_str = new std::string{(char*)rxBuffer};
+
+			rtc_time.TimeFormat = 0;
+			//TODO: set time based on wireless communication from external computer
+			rtc_time.Hours = atoi(time_str->substr(33,2).c_str());
+			rtc_time.Minutes = atoi(time_str->substr(36,2).c_str());
+			rtc_time.Seconds = atoi(time_str->substr(39,2).c_str());
+			//rtc_time.DayLightSaving = 0;
+			std::string_view weekday = time_str->substr(29,3);
+			if(weekday == "Mon"){
+				rtc_date.WeekDay = RTC_WEEKDAY_MONDAY;
+			}
+			else if(weekday == "Tue"){
+				rtc_date.WeekDay = RTC_WEEKDAY_TUESDAY;
+			}
+			else if(weekday == "Wed"){
+				rtc_date.WeekDay = RTC_WEEKDAY_WEDNESDAY;
+			}
+			else if(weekday == "Thu"){
+				rtc_date.WeekDay = RTC_WEEKDAY_THURSDAY;
+			}
+			else if(weekday == "Fri"){
+				rtc_date.WeekDay = RTC_WEEKDAY_FRIDAY;
+			}
+			else if(weekday == "Sat"){
+				rtc_date.WeekDay = RTC_WEEKDAY_SATURDAY;
+			}
+			else if(weekday == "Sun"){
+				rtc_date.WeekDay = RTC_WEEKDAY_SUNDAY;
+			}
+			rtc_date.Date = atoi(time_str->substr(26,2).c_str());
+			rtc_date.Month = atoi(time_str->substr(23,2).c_str());
+			rtc_date.Year = atoi(time_str->substr(20,2).c_str());
+			HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+			HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+			delete time_str;
 		}
-		else if(weekday == "Tue"){
-			rtc_date.WeekDay = RTC_WEEKDAY_TUESDAY;
-		}
-		else if(weekday == "Wed"){
-			rtc_date.WeekDay = RTC_WEEKDAY_WEDNESDAY;
-		}
-		else if(weekday == "Thu"){
-			rtc_date.WeekDay = RTC_WEEKDAY_THURSDAY;
-		}
-		else if(weekday == "Fri"){
-			rtc_date.WeekDay = RTC_WEEKDAY_FRIDAY;
-		}
-		else if(weekday == "Sat"){
-			rtc_date.WeekDay = RTC_WEEKDAY_SATURDAY;
-		}
-		else if(weekday == "Sun"){
-			rtc_date.WeekDay = RTC_WEEKDAY_SUNDAY;
-		}
-		rtc_date.Date = atoi(time_str->substr(7,2).c_str());
-		rtc_date.Month = atoi(time_str->substr(4,2).c_str());
-		rtc_date.Year = atoi(time_str->substr(1,2).c_str());
-		HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-		HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-		delete time_str;
 	}
 
 	publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
@@ -518,7 +523,9 @@ void WirelessCommTask(void const *argument)
 
 	for( ;; )
 	{
-		p_broker->sendMsg(recipient_t::google_home, "I'm alive!");
+		if(!p_broker->sendMsg(recipient_t::google_home, "I'm alive!")){
+			publishLogMessage("I'm alive! transmit failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+		}
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
 		osDelay(200);
 	}
