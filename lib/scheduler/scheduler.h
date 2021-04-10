@@ -88,8 +88,10 @@ public:
 	bool									addLine(const char *_line);
 	std::vector<activity_s>&				getActivities(void);
 	std::vector<exception_s>&				getExceptions(void);
-	const uint8_t							getActivitiesCount(void);
-	const uint8_t							getExceptionsCount(void);
+	const uint8_t							getActivitiesCount(void) const;
+	const uint8_t							getExceptionsCount(void) const;
+	const uint8_t&							getActivitiesCountLimit(void) const;
+	const uint8_t&							getExceptionsCountLimit(void) const;
 	static activity_s						parseActivity(const char *_line);
 	static exception_s						parseException(const char *_line);
 };
