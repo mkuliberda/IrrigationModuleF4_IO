@@ -16,6 +16,8 @@
 #include <queue>
 #include "HAL_UART_MsgBroker.h"
 #include "MsgBrokerFactory.h"
+#include "HAL_UART_ESP01S_MsgParser.h"
+
 
 typedef std::pair<log_msg_prio_t, log_msg*> PAIR;
 struct cmp_pair {
@@ -400,7 +402,6 @@ void SDCardTask(void const *argument)
 				if (evt.status == osEventMail){
 					sys_message = (log_msg*)evt.value.p;
 					msg_map.insert({ sys_message->priority, sys_message });
-					//logger.writeLog(sys_message, &log_file);
 				}
 				osMailFree(sys_logs_box, sys_message);
 			}while(evt.status == osEventMail);
@@ -410,7 +411,6 @@ void SDCardTask(void const *argument)
 				if (evt.status == osEventMail){
 					irg_message = (log_msg*)evt.value.p;
 					msg_map.insert({ irg_message->priority, irg_message });
-					//logger.writeLog(irg_message, &log_file);
 				}
 				osMailFree(irg_logs_box, irg_message);
 			}while(evt.status == osEventMail);
@@ -420,7 +420,6 @@ void SDCardTask(void const *argument)
 				if (evt.status == osEventMail){
 					wls_message = (log_msg*)evt.value.p;
 					msg_map.insert({ wls_message->priority, wls_message });
-					//logger.writeLog(wls_message, &log_file);
 				}
 				osMailFree(wls_logs_box, wls_message);
 			}while(evt.status == osEventMail);
@@ -447,75 +446,27 @@ void WirelessCommTask(void const *argument)
 	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
 	time_rdy_sem = osSemaphoreCreate(osSemaphore(time_rdy_sem), 1);
 
-	RTC_TimeTypeDef rtc_time;
-	RTC_DateTypeDef rtc_date;
-
 	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
 
-	//TODO: implement USART communication as USART Broker class
-	// Format time, $yy-mm-dd,ddd,hh-mm-ss 
-	uint8_t rxBuffer[]{EXT_TIME_FORMAT};
 	 /* Store the handle of the calling task. */
     xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
 	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
 
 	MsgBrokerPtr p_broker;
 	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
-	if (!p_broker->requestData(recipient_t::ntp_server, "CurrentTime")){
-		publishLogMessage("CurrentTime transmit request failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+	HAL_UART_ESP01S_MsgParser esp01s_parser1;
+	p_broker->setParser(&esp01s_parser1);
+
+	if (!p_broker->requestData(recipient_t::ntp_server, "CurrentTime", true)){
+		publishLogMessage("Curr time transmit request failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 	}
+
+	p_broker->readData(EXT_TIME_STR_LEN);
 	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
 	//xTaskToNotifyFromUsart2Tx = NULL;
-
-	HAL_UART_Receive_DMA(&huart2, (uint8_t*)rxBuffer, sizeof(rxBuffer)-1);
-	ulTaskNotifyTake( xArrayIndex, osWaitForever);
-    xTaskToNotifyFromUsart2Rx = NULL;
-   /* if ulNotfication The transmission ended as expected. */
-	/* else The call to ulTaskNotifyTake() timed out. */	
-	if(rxBuffer[0] == '{')
-	{
-		if(rxBuffer[2] == 'N' && rxBuffer[3] == 'T' && rxBuffer[4] == 'P'){
-			std::string *time_str = new std::string{(char*)rxBuffer};
-
-			rtc_time.TimeFormat = 0;
-			//TODO: set time based on wireless communication from external computer
-			rtc_time.Hours = atoi(time_str->substr(33,2).c_str());
-			rtc_time.Minutes = atoi(time_str->substr(36,2).c_str());
-			rtc_time.Seconds = atoi(time_str->substr(39,2).c_str());
-			//rtc_time.DayLightSaving = 0;
-			std::string_view weekday = time_str->substr(29,3);
-			if(weekday == "Mon"){
-				rtc_date.WeekDay = RTC_WEEKDAY_MONDAY;
-			}
-			else if(weekday == "Tue"){
-				rtc_date.WeekDay = RTC_WEEKDAY_TUESDAY;
-			}
-			else if(weekday == "Wed"){
-				rtc_date.WeekDay = RTC_WEEKDAY_WEDNESDAY;
-			}
-			else if(weekday == "Thu"){
-				rtc_date.WeekDay = RTC_WEEKDAY_THURSDAY;
-			}
-			else if(weekday == "Fri"){
-				rtc_date.WeekDay = RTC_WEEKDAY_FRIDAY;
-			}
-			else if(weekday == "Sat"){
-				rtc_date.WeekDay = RTC_WEEKDAY_SATURDAY;
-			}
-			else if(weekday == "Sun"){
-				rtc_date.WeekDay = RTC_WEEKDAY_SUNDAY;
-			}
-			rtc_date.Date = atoi(time_str->substr(26,2).c_str());
-			rtc_date.Month = atoi(time_str->substr(23,2).c_str());
-			rtc_date.Year = atoi(time_str->substr(20,2).c_str());
-			HAL_RTC_SetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-			HAL_RTC_SetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-			delete time_str;
-		}
-	}
 
 	publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 	osSemaphoreRelease(time_rdy_sem);
