@@ -36,7 +36,7 @@ public:
 	SensorImp(const sensor_type_t& _type) {
 		sensor_type = _type;
 	}
-	virtual ~SensorImp() {}
+	virtual ~SensorImp() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	SensorImp(SensorImp const &) = delete;
 	SensorImp& operator=(SensorImp const&) = delete;
@@ -65,7 +65,7 @@ public:
 		sensor_type = std::move(_type);
 		pinout = std::move(_pinout);
 	}
-	~OpticalWaterLevelSensorImp() {}
+	~OpticalWaterLevelSensorImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	OpticalWaterLevelSensorImp(OpticalWaterLevelSensorImp const&) = delete;
@@ -89,7 +89,7 @@ public:
 		sensor_type = _type;
 		pinout = _pinout;
 	}
-	~WaterFlowSensorImp() {}
+	~WaterFlowSensorImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	WaterFlowSensorImp(WaterFlowSensorImp const&) = delete;
@@ -108,7 +108,7 @@ public:
 		sensor_type = _type;
 		init(_pinout, _tim_baseHandle);
 	}
-	~DS18B20TemperatureSensorImp() {}
+	~DS18B20TemperatureSensorImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DS18B20TemperatureSensorImp(DS18B20TemperatureSensorImp const&) = delete;
@@ -153,7 +153,7 @@ public:
 	OpticalWaterLevelSensor(const float&& _mount_height_meters, const struct gpio_s&& _pinout) {
 		imp_ = new OpticalWaterLevelSensorImp(std::move(_mount_height_meters), std::move(_pinout));
 	}
-	~OpticalWaterLevelSensor() {}
+	~OpticalWaterLevelSensor() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	OpticalWaterLevelSensor(OpticalWaterLevelSensor const &) = delete;
 	OpticalWaterLevelSensor& operator=(OpticalWaterLevelSensor const&) = delete;
@@ -166,7 +166,7 @@ public:
 	WaterFlowSensor(const struct gpio_s& _pinout) {
 		imp_ = new WaterFlowSensorImp(_pinout);
 	}
-	~WaterFlowSensor() {}
+	~WaterFlowSensor() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	WaterFlowSensor(WaterFlowSensor const &) = delete;
 	WaterFlowSensor& operator=(WaterFlowSensor const&) = delete;
@@ -177,7 +177,7 @@ public:
 	DS18B20TemperatureSensor(const struct gpio_s& _pinout, TIM_HandleTypeDef* _tim_baseHandle) {
 		imp_ = new DS18B20TemperatureSensorImp(_pinout, _tim_baseHandle);
 	}
-	~DS18B20TemperatureSensor() {}
+	~DS18B20TemperatureSensor() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DS18B20TemperatureSensor(DS18B20TemperatureSensor const &) = delete;
 	DS18B20TemperatureSensor& operator=(DS18B20TemperatureSensor const&) = delete;

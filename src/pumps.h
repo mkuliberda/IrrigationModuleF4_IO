@@ -75,7 +75,7 @@ public:
 		status.id = std::move(_id);
 		init(std::move(_idletime_required_seconds), std::move(_runtime_limit_seconds)); //TODO: "calling virtual function in constructor is dangerous"
 	}
-	virtual ~PumpImp() {}
+	virtual ~PumpImp() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	PumpImp(PumpImp const&) = delete;
 	PumpImp& operator=(PumpImp const&) = delete;
@@ -119,8 +119,7 @@ public:
 		type = std::move(_type);
 		pinout = std::move(_pinout);
 	}
-	~BinaryDcPumpImp() {
-	}
+	~BinaryDcPumpImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	BinaryDcPumpImp(BinaryDcPumpImp const&) = delete;
@@ -160,8 +159,7 @@ public:
 		type = std::move(_type);
 		init(std::move(_idletime_required_seconds), std::move(_runtime_limit_seconds), std::move(_pinout), std::move(_led_pinout), std::move(_fault_pinout), std::move(_mode_pinout));
 	}
-	~DRV8833DcPumpImp() {
-	}
+	~DRV8833DcPumpImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DRV8833DcPumpImp(DRV8833DcPumpImp const &) = delete;
@@ -199,8 +197,7 @@ public:
 		type = std::move(_type);
 		//init(std::move(_pinout), 0);
 	}
-	~DRV8833BldcPumpImp() {
-	}
+	~DRV8833BldcPumpImp() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DRV8833BldcPumpImp(DRV8833BldcPumpImp const &) = delete;
@@ -258,8 +255,7 @@ public:
 	BinaryDcPump(const struct gpio_s&& _pinout) {
 		imp_ = new BinaryDcPumpImp(std::move(_pinout));
 	}
-	~BinaryDcPump() {
-	}
+	~BinaryDcPump() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	BinaryDcPump(BinaryDcPump const&) = delete;
 	BinaryDcPump& operator=(BinaryDcPump const&) = delete;
@@ -279,7 +275,7 @@ public:
 		const pump_type_t&& _type = pump_type_t::drv8833_dc) {
 		imp_ = new DRV8833DcPumpImp(std::move(_id), std::move(_idletime_required_seconds), std::move(_runtime_limit_seconds), std::move(_pinout), std::move(_led_pinout), std::move(_fault_pinout), std::move(_mode_pinout));
 	}
-	~DRV8833DcPump() {}
+	~DRV8833DcPump() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DRV8833DcPump(DRV8833DcPump const&) = delete;
 	DRV8833DcPump& operator=(DRV8833DcPump const&) = delete;
@@ -294,8 +290,7 @@ public:
 	DRV8833BldcPump(const struct gpio_s&& _pinout) {
 		imp_ = new DRV8833BldcPumpImp(std::move(_pinout));
 	}
-	~DRV8833BldcPump() {
-	}
+	~DRV8833BldcPump() =default;
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	DRV8833BldcPump(DRV8833BldcPump const&) = delete;
 	DRV8833BldcPump& operator=(DRV8833BldcPump const&) = delete;

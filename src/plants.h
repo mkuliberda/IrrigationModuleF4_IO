@@ -39,7 +39,7 @@ public:
 	//PlantInterface(PlantInterface &&) = default;
 	//PlantInterface& operator= (PlantInterface &&) = default;
 
-	virtual ~PlantInterface() = default; 
+	virtual ~PlantInterface() =default; 
 	virtual float getMoisturePercent() = 0;
 	virtual bool setMoisturePercent(const float &_moisture) = 0;
 	virtual std::string getName() = 0;
@@ -81,7 +81,7 @@ public:
 		p_type = plant_only;
 	}
 
-	~Plant() = default;
+	~Plant() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	Plant(Plant const &) = delete;				
@@ -151,7 +151,7 @@ public:
 		//setPlantType(); //TODO: "calling virtual function in constructor is dangerous"
 	}
 
-	~PlantWithDMAMoistureSensor() = default;
+	~PlantWithDMAMoistureSensor() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	PlantWithDMAMoistureSensor(PlantWithDMAMoistureSensor const &) = delete;

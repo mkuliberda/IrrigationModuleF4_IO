@@ -153,7 +153,7 @@ public:
 		watertank_info.id = std::move(_id);
 	}
 
-	~Watertank() {}
+	~Watertank() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	Watertank(Watertank const &) = delete;
@@ -167,7 +167,7 @@ public:
  */
 class WatertankBuilder {
 public:
-	virtual ~WatertankBuilder() {}
+	virtual ~WatertankBuilder() =default;
 	virtual WatertankBuilder& produceOpticalWaterLevelSensor(const float& _mount_pos_meters, const struct gpio_s& _pinout) = 0;
 	virtual WatertankBuilder& produceDS18B20TemperatureSensor(const struct gpio_s& _pinout, TIM_HandleTypeDef* _tim_baseHandle) = 0;
 	virtual WatertankBuilder& setWatertankVolume(const double& _volume) = 0;
@@ -198,7 +198,7 @@ public:
 		this->Reset();
 	}
 
-	~ConcreteWatertankBuilder() {}
+	~ConcreteWatertankBuilder() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	ConcreteWatertankBuilder(ConcreteWatertankBuilder const &) = delete;

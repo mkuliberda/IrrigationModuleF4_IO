@@ -136,7 +136,9 @@ public:
 	is_available(false),
 	activities_limit(_activities_limit),
 	exceptions_limit(_exceptions_limit)
-	{};
+	{
+		vActivities.reserve(14);
+	};
 
 	const std::string_view& 				getName() const;
 	bool& 									update(const TimeStamp_t &_timestamp);
