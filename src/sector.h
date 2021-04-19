@@ -66,7 +66,7 @@ public:
 	IrrigationSector(const uint8_t&& _id){
 		sector_info.id = std::move(_id);
 	}
-	~IrrigationSector() {}
+	~IrrigationSector() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	IrrigationSector(IrrigationSector const &) = delete;
@@ -81,7 +81,7 @@ public:
  */
 class IrrigationSectorBuilder{
     public:
-    virtual ~IrrigationSectorBuilder(){}
+    virtual ~IrrigationSectorBuilder() =default;
 	virtual IrrigationSectorBuilder& producePlantWithDMAMoistureSensor(const std::string_view& _p_name, const bool& _rain_exposed, const float& _ref_voltage = 3.3,
 		const uint32_t& _quantization_levels = 4095) =0;
 	virtual IrrigationSectorBuilder& produceDRV8833PumpWithController(const pump_controller_mode_t& _controller_mode, const uint32_t& _idletime_required_seconds,
@@ -113,7 +113,7 @@ public:
         this->Reset();
     }
 
-    ~ConcreteIrrigationSectorBuilder(){}
+    ~ConcreteIrrigationSectorBuilder() =default;
 
 	//To avoid runtime errors, delete copy constructor and copy assignment operator. If sth's wrong, compile time error will fire.
 	ConcreteIrrigationSectorBuilder(ConcreteIrrigationSectorBuilder const &) = delete;

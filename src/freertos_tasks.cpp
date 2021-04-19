@@ -542,7 +542,7 @@ void IrrigationControlTask(void const *argument){
 			msg = (plant_config_msg*)evt.value.p;
 			if (msg->type == 1){
 				sector_builder[msg->sector_nbr].producePlantWithDMAMoistureSensor(msg->name, msg->rain_exposed);
-				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr)) + " got plant: " + msg->name;
+				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr) + 1) + " got plant: " + msg->name;
 				publishLogMessage(text, irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::LOW);
 			}
 		}
