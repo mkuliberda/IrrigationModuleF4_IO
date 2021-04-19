@@ -84,6 +84,7 @@ typedef struct {
 	uint8_t day;
 	uint8_t month;
 	uint8_t year;
+	uint32_t milliseconds;
 }TimeStamp_t;
 
 struct period_s{

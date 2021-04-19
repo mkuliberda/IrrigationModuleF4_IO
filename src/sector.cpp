@@ -51,14 +51,17 @@ bool& IrrigationSector::getWateringState(){
 	return watering;
 }
 
-void IrrigationSector::update() {
+void IrrigationSector::update(const double& _dt) {
+	pump_controller.update(_dt, watering);
 	encodeState();
 	encodeErrors();
 	encodePlants();
 }
 
 struct IrrigationSectorInfo_s&	IrrigationSector::getInfo(){
-	update();
+	encodeState();
+	encodeErrors();
+	encodePlants();
 	return sector_info;
 }
 

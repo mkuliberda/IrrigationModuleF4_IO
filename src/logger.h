@@ -25,7 +25,7 @@
 #define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
 #define LOG_FILE  "LOG.TXT" 
 
-#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Generic)
+#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Generic)
 #define C(x) x,
 enum reporter_t { REPORTERS TOP };
 #undef C

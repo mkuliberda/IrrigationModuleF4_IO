@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "../lib/Parser/parser.h"
+#include "Parser.h"
 
 #define RASPBERRY_PI_STR "rpi\\"
 #define GOOGLE_HOME_STR "goo\\"

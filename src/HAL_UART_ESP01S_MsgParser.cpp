@@ -1,6 +1,5 @@
 #include "HAL_UART_ESP01S_MsgParser.h"
 #include <string>
-#include "stm32f4xx_hal.h"
 #include "rtc.h"
 
 bool HAL_UART_ESP01S_MsgParser::parseString(const std::string& _str){

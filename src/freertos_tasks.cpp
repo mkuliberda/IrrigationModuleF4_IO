@@ -94,6 +94,8 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
   /* place for user code */
 }
 
+/* USER CODE END GET_TIMER_TASK_MEMORY */
+
 uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const log_msg_prio_t &_msg_priority)
 {
 	std::bitset<8> errcode;
@@ -205,8 +207,22 @@ osEvent updateSectorsExceptions(Scheduler *schedule, osMailQId &mail_box)
 	return evt;
 }
 
+double calculateTimeDiff(const TimeStamp_t& _past, const TimeStamp_t& _now) {
+	struct tm tm_timestamp_now { _now.seconds, _now.minutes, _now.hours, _now.day, _now.month - 1, _now.year + 100 };
+	struct tm tm_timestamp_past { _past.seconds, _past.minutes, _past.hours, _past.day, _past.month - 1, _past.year + 100 };
+	time_t now = mktime(&tm_timestamp_now);
+	time_t past = mktime(&tm_timestamp_past);
 
-/* USER CODE END GET_TIMER_TASK_MEMORY */
+	using milliseconds = std::chrono::milliseconds;
+
+	auto tp_now = std::chrono::system_clock::from_time_t(now);
+	tp_now += milliseconds(_now.milliseconds);
+	auto tp_past = std::chrono::system_clock::from_time_t(past);
+	tp_past += milliseconds(_past.milliseconds);
+	std::chrono::duration<double, std::milli>  dt_ms = tp_now - tp_past;
+
+	return dt_ms.count() /1000.0;
+}
 
 /**
   * @brief  FreeRTOS initialization
@@ -490,7 +506,7 @@ void IrrigationControlTask(void const *argument){
 
 	RTC_TimeTypeDef rtc_time;
 	RTC_DateTypeDef rtc_date;
-	TimeStamp_t timestamp;
+	TimeStamp_t timestamp, timestamp_prev;
 
 	bool sector_active_prev[SECTORS_AMOUNT] = {};
 	Scheduler sector_schedule[SECTORS_AMOUNT] = {Scheduler("SECTOR1"), Scheduler("SECTOR2"), Scheduler("SECTOR3"), Scheduler("SECTOR4")};
@@ -505,9 +521,9 @@ void IrrigationControlTask(void const *argument){
 	const struct gpio_s opt_wl_sensor1_gpio = {GPIOB, GPIO_PIN_12};
 	std::unique_ptr<IrrigationSector>(p_sector[SECTORS_AMOUNT]);
 	std::unique_ptr<Watertank>(p_watertank);
-	uint8_t activities_cnt[SECTORS_AMOUNT]={0,0,0,0};
-	uint8_t exceptions_cnt[SECTORS_AMOUNT]={0,0,0,0};
-	uint8_t plants_cnt[SECTORS_AMOUNT]={0,0,0,0};
+	const uint32_t refresh_interval_msec = 500.0;
+	double dt_seconds = 500.0_msec;
+	bool time_set{false};
 
 	osSemaphoreWait(time_rdy_sem, osWaitForever);
 	osSemaphoreWait(config_rdy_sem, osWaitForever);
@@ -535,13 +551,14 @@ void IrrigationControlTask(void const *argument){
 
 	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
 		 p_sector[i] = sector_builder[i].GetProduct();
+		 p_sector[i]->setWateringState(false);
 	}
+
 
 	delete[] sector_builder;
 
 	ConcreteWatertankBuilder *watertank_builder = new ConcreteWatertankBuilder;
 	watertank_builder->produceOpticalWaterLevelSensor(0.0825_m,  opt_wl_sensor1_gpio);
-
 	p_watertank = watertank_builder->GetProduct();
 
 	p_watertank->setTankStateHysteresis(4.0_sec, 4.0_sec);
@@ -555,39 +572,46 @@ void IrrigationControlTask(void const *argument){
 		updateSectorsActivities(sector_schedule, activities_box);
 		updateSectorsExceptions(sector_schedule, exceptions_box);
 
-		HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
-		HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
-		timestamp.day = rtc_date.Date;
-		timestamp.hours = rtc_time.Hours;
-		timestamp.minutes = rtc_time.Minutes;
-		timestamp.month = rtc_date.Month;
-		timestamp.seconds = rtc_time.Seconds;
-		timestamp.weekday = rtc_date.WeekDay;
-		timestamp.year = rtc_date.Year;
+		if (HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN) == HAL_OK && HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN) == HAL_OK){
+			timestamp = {rtc_date.WeekDay, rtc_time.Hours, rtc_time.Minutes, rtc_time.Seconds, rtc_date.Date, rtc_date.Month, rtc_date.Year, 1000 * (rtc_time.SecondFraction - rtc_time.SubSeconds) / (rtc_time.SecondFraction + 1)};
+			time_set == true ? dt_seconds = calculateTimeDiff(timestamp_prev, timestamp) : time_set = true;
+			timestamp_prev = {timestamp};
+		}
 
-		for (uint8_t s_nbr=0; s_nbr<SECTORS_AMOUNT; ++s_nbr){
-			if (sector_schedule[s_nbr].isAvailable()){
-				if (sector_schedule[s_nbr].update(timestamp) != sector_active_prev[s_nbr]){
-					if (sector_schedule[s_nbr].isActive()){
-						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-						publishLogMessage("Irrigation started", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
+		//TODO:publishLogMessage pass as pointer and invoke only once per state change?
+		if(true/*p_watertank->update(dt_seconds)*/){ //TODO: base decision on tank's state when connected phisically
+			for (uint8_t s_nbr=0; s_nbr<SECTORS_AMOUNT; ++s_nbr){
+				if (sector_schedule[s_nbr].isAvailable()){
+					if (sector_schedule[s_nbr].update(timestamp) != sector_active_prev[s_nbr]){
+						if (sector_schedule[s_nbr].isActive()){
+							publishLogMessage("Irrigation start", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
+							HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
+							p_sector[s_nbr]->setWateringState(true);
+						}
+						else{
+							publishLogMessage("Irrigation stop", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
+							HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+							p_sector[s_nbr]->setWateringState(false);
+						}
+						sector_active_prev[s_nbr] = sector_schedule[s_nbr].isActive();
 					}
-					else{
-						HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-						publishLogMessage("Irrigation finished", irg_logs_box, static_cast<reporter_t>(s_nbr), log_msg_prio_t::MEDIUM);
-					}
-
-					sector_active_prev[s_nbr] = sector_schedule[s_nbr].isActive();
 				}
-			activities_cnt[s_nbr] = sector_schedule[s_nbr].getActivitiesCount();
-			exceptions_cnt[s_nbr] = sector_schedule[s_nbr].getExceptionsCount();
+			}
+		}
+		else{
+			publishLogMessage("Irrigation stop, tank error", irg_logs_box, reporter_t::Watertank1, log_msg_prio_t::CRITICAL);
+			for (uint8_t s_nbr=0; s_nbr<SECTORS_AMOUNT; ++s_nbr){
+				HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+				p_sector[s_nbr]->setWateringState(false);
 			}
 		}
 
-		//Placeholder for rest of the code
+		for (uint8_t s_nbr=0; s_nbr<SECTORS_AMOUNT; ++s_nbr){
+			p_sector[s_nbr]->update(dt_seconds);
+		}
 
     	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-		osDelay(500);
+		osDelay(refresh_interval_msec);
 	}
 
 }

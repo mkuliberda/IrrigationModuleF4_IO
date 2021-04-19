@@ -55,7 +55,7 @@ public:
 	float												getPlantHealth(const uint8_t& _id) const;
 	void												setWateringState(const bool& _watering_active);
 	bool&												getWateringState();
-	void												update();
+	void												update(const double& _dt);
 	struct IrrigationSectorInfo_s&						getInfo();
 	bool												setPlantMoistureByName(const std::string_view& _plant_name, const float& _moisture_percent);
 
