@@ -18,18 +18,14 @@
 #include "MsgBrokerFactory.h"
 #include "HAL_UART_ESP01S_MsgParser.h"
 
-
-typedef std::pair<log_msg_prio_t, log_msg*> PAIR;
-struct cmp_pair {
-	bool operator()(const PAIR &a, const PAIR &b) {
-		return a.first < b.first;
-	};
-};
-
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
 extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
 extern const UBaseType_t xArrayIndex;
 
+TaskHandle_t xSDCardNotifyHandle = NULL;
+TaskHandle_t xSysMonNotifyHandle = NULL;
+TaskHandle_t xIrgCtrlNotifyHandle = NULL;
+const UBaseType_t xTaskIndex = 1;
 
 
 osThreadId SysMonitorTaskHandle;
@@ -252,15 +248,15 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
+  osThreadDef(wirelessTask, WirelessCommTask, osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  WirelessCommTaskHandle = osThreadCreate(osThread(wirelessTask), NULL);
+
   osThreadDef(sysmonitorTask, SysMonitorTask, osPriorityRealtime, 0, 30*configMINIMAL_STACK_SIZE);
   SysMonitorTaskHandle = osThreadCreate(osThread(sysmonitorTask), NULL);
 
   osThreadDef(sdcardTask, SDCardTask, osPriorityNormal, 0, 80*configMINIMAL_STACK_SIZE);
   SDCardTaskHandle = osThreadCreate(osThread(sdcardTask), NULL);
   
-  osThreadDef(wirelessTask, WirelessCommTask, osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
-  WirelessCommTaskHandle = osThreadCreate(osThread(wirelessTask), NULL);
-
   osThreadDef(irrigationTask, IrrigationControlTask, osPriorityNormal, 0, 60*configMINIMAL_STACK_SIZE);
   IrrigationControlTaskHandle = osThreadCreate(osThread(irrigationTask), NULL);
 
@@ -279,6 +275,7 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void SysMonitorTask(void const * argument)
 {
+	xSysMonNotifyHandle = xTaskGetCurrentTaskHandle();
 	size_t min_heap_size = 0;
 	size_t prev_min_heap_size = 0;
 	TaskStatus_t TaskStatus;
@@ -289,7 +286,9 @@ void SysMonitorTask(void const * argument)
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
 
-	publishLogMessage("Sys monitor task started", sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::INFO);
+	ulTaskNotifyTake( xTaskIndex, osWaitForever);
+
+	publishLogMessage("Sys monitoring started", sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::INFO);
 
 	for(;;)
 	{
@@ -323,6 +322,8 @@ void SysMonitorTask(void const * argument)
 
 void SDCardTask(void const *argument)
 {
+	xSDCardNotifyHandle = xTaskGetCurrentTaskHandle();
+
     FIL log_file;
 	FIL config_file;
 	char logical_drive[4] = {0, 0, 0, 0};   /* SD logical drive path */
@@ -331,11 +332,6 @@ void SDCardTask(void const *argument)
 	FILINFO file_info;
 	char cwd_buffer[80] = "/";
 
-	HAL_FatFs_Logger &logger = HAL_FatFs_Logger::createInstance();
-	config_rdy_sem = osSemaphoreCreate(osSemaphore(config_rdy_sem), 1);
-
-	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
-	bool mount_success = false;
 	activity_msg *activity = nullptr;
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
 	exception_msg *exception = nullptr;
@@ -347,8 +343,12 @@ void SDCardTask(void const *argument)
 	log_msg *irg_message = nullptr;
 	log_msg *wls_message = nullptr;
 
+	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
+	HAL_FatFs_Logger &logger = HAL_FatFs_Logger::createInstance();
+	bool mount_success = false;
+
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-	osSemaphoreWait(config_rdy_sem, osWaitForever);
+	ulTaskNotifyTake( xTaskIndex, osWaitForever);
 
 	if(f_mount(&file_system, logical_drive, 1) == FR_OK){
 		mount_success = true;
@@ -408,7 +408,8 @@ void SDCardTask(void const *argument)
 	}
 
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-	osSemaphoreRelease(config_rdy_sem);
+	while( xIrgCtrlNotifyHandle == NULL );
+    xTaskNotifyGive( xIrgCtrlNotifyHandle);
 
     for( ;; )
     {
@@ -462,17 +463,11 @@ void SDCardTask(void const *argument)
 
 void WirelessCommTask(void const *argument)
 {
-	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
-	time_rdy_sem = osSemaphoreCreate(osSemaphore(time_rdy_sem), 1);
-
-	publishLogMessage("Wireless Comm task started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
-	publishLogMessage("Updating current time...", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
-
-	osSemaphoreWait(time_rdy_sem, osWaitForever);
-
 	 /* Store the handle of the calling task. */
     xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
 	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
+
+	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
 
 	MsgBrokerPtr p_broker;
 	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
@@ -482,14 +477,18 @@ void WirelessCommTask(void const *argument)
 	if (!p_broker->requestData(recipient_t::ntp_server, "CurrentTime", true)){
 		publishLogMessage("Curr time transmit request failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 	}
+	if(p_broker->readData(EXT_TIME_STR_LEN)){
+		publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+	}
 
-	p_broker->readData(EXT_TIME_STR_LEN);
+    while( xSDCardNotifyHandle == NULL || xSysMonNotifyHandle == NULL );
+    xTaskNotifyGive( xSDCardNotifyHandle);
+	xTaskNotifyGive( xSysMonNotifyHandle);
+
 	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
 	//xTaskToNotifyFromUsart2Tx = NULL;
 
-	publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
-	osSemaphoreRelease(time_rdy_sem);
-
+	publishLogMessage("Wireless Comm started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 
 	for( ;; )
 	{
@@ -501,8 +500,9 @@ void WirelessCommTask(void const *argument)
 	}
 }
 
-void IrrigationControlTask(void const *argument){
-
+void IrrigationControlTask(void const *argument)
+{
+	xIrgCtrlNotifyHandle = xTaskGetCurrentTaskHandle();
 	irg_logs_box = osMailCreate(osMailQ(irg_logs_box), osThreadGetId());
 	osEvent evt;
 	plant_config_msg *msg = nullptr;
@@ -528,11 +528,9 @@ void IrrigationControlTask(void const *argument){
 	double dt_seconds = 500.0_msec;
 	bool time_set{false};
 
-	osSemaphoreWait(time_rdy_sem, osWaitForever);
-	osSemaphoreWait(config_rdy_sem, osWaitForever);
+	ulTaskNotifyTake( xTaskIndex, osWaitForever);
 
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
-	publishLogMessage("IrrgCtrl task started", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
+	publishLogMessage("Irrigation Ctrl started", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
 
 	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder[SECTORS_AMOUNT]; //leave as pointer to delete when not needed anymore
 	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
@@ -556,7 +554,6 @@ void IrrigationControlTask(void const *argument){
 		 p_sector[i] = sector_builder[i].GetProduct();
 		 p_sector[i]->setWateringState(false);
 	}
-
 
 	delete[] sector_builder;
 

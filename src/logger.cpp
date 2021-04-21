@@ -56,13 +56,15 @@ void HAL_FatFs_Logger::writeLog(const std::string_view& _msg, FIL *log_file, con
 		HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 		HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 
+		uint16_t milliseconds = 1000 * (rtc_time.SecondFraction - rtc_time.SubSeconds) / (rtc_time.SecondFraction + 1);
+
 		osMutexWait(logger_mutex, osWaitForever);
 		if (f_open(log_file, file_path.c_str(), FA_WRITE | FA_OPEN_APPEND) == FR_OK) {
 			std::string text{_msg};
 			if (text.length() >= log_text_max_len){
 				text = text.substr(text.length() - log_text_max_len + 1, log_text_max_len - 1);
 			}
-			f_printf(log_file, log_format, rtc_date.Date, rtc_date.Month, rtc_date.Year, rtc_time.Hours, rtc_time.Minutes, rtc_time.Seconds, reporter[_reporter], text.c_str());
+			f_printf(log_file, log_format, rtc_date.Year, rtc_date.Month,  rtc_date.Date, rtc_time.Hours, rtc_time.Minutes, rtc_time.Seconds, milliseconds, reporter[_reporter], text.c_str());
 			while (f_close(log_file) != FR_OK);
 		}
 		osMutexRelease(logger_mutex);
