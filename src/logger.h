@@ -21,7 +21,7 @@
 #endif
 
 #define LOG_TEXT_LEN 40
-#define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d %s: %s\n"
+#define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d.%03d %s: %s\n"
 #define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
 #define LOG_FILE  "LOG.TXT" 
 
@@ -47,6 +47,7 @@ struct log_time {
 	uint8_t day{};
 	uint8_t month{};
 	uint8_t year{};
+	uint16_t milliseconds{};
 };
 
 struct log_msg {

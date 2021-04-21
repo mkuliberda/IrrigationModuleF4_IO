@@ -32,6 +32,7 @@ private:
     bool transmit(const std::string& _str, const bool& _blocking_mode); 
 	const char *pub_hdr = "$PUB\\";
 	const char *get_hdr = "$GET\\";
+	const char *msg_ending = "\n";
 	UART_HandleTypeDef *UART_Handle{};
 	uint8_t txBuffer[BUFFER_SIZE]{};
 	uint8_t rxBuffer[BUFFER_SIZE]{};

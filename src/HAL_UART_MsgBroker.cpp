@@ -17,20 +17,20 @@ bool HAL_UART_MsgBroker::sendMsg(const recipient_t& _recipient, const std::strin
 {
 	std::string str_msg{pub_hdr};
 	const std::string msg_start{"{\"Msg\":\""};
-	const std::string msg_end{"\"}\n"};
+	const std::string msg_end{"\"}"};
 	bool result = false;
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
-		str_msg += RASPBERRY_PI_STR + msg_start + _msg + msg_end;
+		str_msg += RASPBERRY_PI_STR + msg_start + _msg + msg_end + msg_ending;
         result = transmit(str_msg, _wait_until_cplt);
 		break;
 	case recipient_t::google_home:
-		str_msg += GOOGLE_HOME_STR + msg_start + _msg + msg_end;
+		str_msg += GOOGLE_HOME_STR + msg_start + _msg + msg_end + msg_ending;
         result = transmit(str_msg, _wait_until_cplt);
 		break;
 	case recipient_t::broadcast:
-		str_msg += BROADCAST_STR + msg_start + _msg + msg_end;
+		str_msg += BROADCAST_STR + msg_start + _msg + msg_end + msg_ending;
         result = transmit(str_msg, _wait_until_cplt);
 		break;
 	default:
@@ -55,7 +55,8 @@ bool HAL_UART_MsgBroker::publishData(const recipient_t& _recipient, const char* 
 		str_msg += ",";
 	}
 	str_msg.pop_back(); //remove last comma 
-	str_msg += "]}\n";
+	str_msg += "]}";
+	str_msg += msg_ending;
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
@@ -83,15 +84,15 @@ bool HAL_UART_MsgBroker::requestData(const recipient_t& _recipient, const std::s
 
 	switch (_recipient) {
 	case recipient_t::raspberry_pi:
-		str_msg += RASPBERRY_PI_STR + _data_key;
+		str_msg += RASPBERRY_PI_STR + _data_key + msg_ending;
 		result = transmit(str_msg, _wait_until_cplt);
 		break;
 	case recipient_t::google_home:
-		str_msg += GOOGLE_HOME_STR + _data_key;
+		str_msg += GOOGLE_HOME_STR + _data_key + msg_ending;
 		result = transmit(str_msg, _wait_until_cplt);
 		break;
 	case recipient_t::ntp_server:
-		str_msg += NTP_SERVER_STR + _data_key;
+		str_msg += NTP_SERVER_STR + _data_key + msg_ending;
         result = transmit(str_msg, _wait_until_cplt);
 		break;
 	default:

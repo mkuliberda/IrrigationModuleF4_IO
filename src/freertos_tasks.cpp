@@ -125,6 +125,7 @@ uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const r
 	msg->time.month = rtc_date.Month;
 	msg->time.seconds = rtc_time.Seconds;
 	msg->time.year = rtc_date.Year;
+	msg->time.milliseconds = 1000 * (rtc_time.SecondFraction - rtc_time.SubSeconds) / (rtc_time.SecondFraction + 1);
 
 	if (msg_txt.length() >= _maxlen){
 		msg_txt = msg_txt.substr(msg_txt.length() - _maxlen + 1, _maxlen - 1);
@@ -256,7 +257,7 @@ void MX_FREERTOS_Init(void) {
 
   osThreadDef(sdcardTask, SDCardTask, osPriorityNormal, 0, 80*configMINIMAL_STACK_SIZE);
   SDCardTaskHandle = osThreadCreate(osThread(sdcardTask), NULL);
-
+  
   osThreadDef(wirelessTask, WirelessCommTask, osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
   WirelessCommTaskHandle = osThreadCreate(osThread(wirelessTask), NULL);
 
@@ -412,12 +413,14 @@ void SDCardTask(void const *argument)
     for( ;; )
     {
 		if(mount_success){
-			std::multimap<log_msg_prio_t, log_msg*> msg_map = {};
+			std::multimap<char*, log_msg*> msg_map_sorted = {};
 			do{
 				evt = osMailGet(sys_logs_box, 1);
 				if (evt.status == osEventMail){
 					sys_message = (log_msg*)evt.value.p;
-					msg_map.insert({ sys_message->priority, sys_message });
+					char time_str[22] = "";
+					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", sys_message->time.year, sys_message->time.month, sys_message->time.day, sys_message->time.hours, sys_message->time.minutes, sys_message->time.seconds, sys_message->time.milliseconds);
+					msg_map_sorted.insert({time_str, sys_message});
 				}
 				osMailFree(sys_logs_box, sys_message);
 			}while(evt.status == osEventMail);
@@ -426,7 +429,9 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(irg_logs_box, 1);
 				if (evt.status == osEventMail){
 					irg_message = (log_msg*)evt.value.p;
-					msg_map.insert({ irg_message->priority, irg_message });
+					char time_str[22] = "";
+					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", irg_message->time.year, irg_message->time.month, irg_message->time.day, irg_message->time.hours, irg_message->time.minutes, irg_message->time.seconds, irg_message->time.milliseconds);
+					msg_map_sorted.insert({time_str, irg_message});
 				}
 				osMailFree(irg_logs_box, irg_message);
 			}while(evt.status == osEventMail);
@@ -435,20 +440,18 @@ void SDCardTask(void const *argument)
 				evt = osMailGet(wls_logs_box, 1);
 				if (evt.status == osEventMail){
 					wls_message = (log_msg*)evt.value.p;
-					msg_map.insert({ wls_message->priority, wls_message });
+					char time_str[22] = "";
+					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", wls_message->time.year, wls_message->time.month, wls_message->time.day, wls_message->time.hours, wls_message->time.minutes, wls_message->time.seconds, wls_message->time.milliseconds);
+					msg_map_sorted.insert({time_str, wls_message});
+
 				}
 				osMailFree(wls_logs_box, wls_message);
 			}while(evt.status == osEventMail);
 
-			std::priority_queue<PAIR, std::vector<PAIR>, cmp_pair> logs_queue{};
-			for (const auto &msg: msg_map ) {
-				logs_queue.push(msg);
-				}
-			while (!logs_queue.empty()) {
-				PAIR top = logs_queue.top() ;
-				logger.writeLog(top.second, &log_file);
-				logs_queue.pop();
-				}
+			for (const auto& msg: msg_map_sorted){
+				logger.writeLog(msg.second, &log_file);
+			}
+
 		}
 
     	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);

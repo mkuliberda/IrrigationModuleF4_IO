@@ -34,7 +34,7 @@ void HAL_FatFs_Logger::writeLog(log_msg *_msg, FIL *log_file) {
 		char text[LOG_TEXT_LEN] = "";
 		strncpy(text, _msg->text, _msg->len);
 		if (f_open(log_file, file_path.c_str(), FA_WRITE | FA_OPEN_APPEND) == FR_OK) {
-			f_printf(log_file, log_format, _msg->time.day, _msg->time.month, _msg->time.year, _msg->time.hours, _msg->time.minutes, _msg->time.seconds, reporter[_msg->reporter_id], text);
+			f_printf(log_file, log_format, _msg->time.year, _msg->time.month, _msg->time.day, _msg->time.hours, _msg->time.minutes, _msg->time.seconds, _msg->time.milliseconds, reporter[_msg->reporter_id], text);
 			while (f_close(log_file) != FR_OK);
 		}
 		osMutexRelease(logger_mutex);
