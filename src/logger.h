@@ -4,6 +4,9 @@
 #define __logger_H
 
 #include <memory>
+#include <map>
+#include <vector>
+#include <string_view>
 
 #ifdef __cplusplus
  extern "C" {
@@ -21,6 +24,8 @@
 #endif
 
 #define LOG_TEXT_LEN 40
+#define TIME_FORMAT "%02d-%02d-%02d %02d:%02d:%02d.%03d"
+#define TIME_FORMAT_LEN (sizeof(TIME_FORMAT))
 #define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d.%03d %s: %s\n"
 #define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
 #define LOG_FILE  "LOG.TXT" 
@@ -58,7 +63,6 @@ struct log_msg {
 	log_time		time{};
 };
 
-
 class HAL_FatFs_Logger
 {
 private:
@@ -66,6 +70,8 @@ private:
 	bool valid{ true };
 	std::string file_path{LOG_FILE};
 	const TCHAR log_format[LOG_FORMAT_LEN] = LOG_FORMAT;
+	const char time_format[TIME_FORMAT_LEN] = TIME_FORMAT;
+	std::vector<std::pair<std::string_view, log_msg*>> logs;
 
 	HAL_FatFs_Logger() = default;
 
@@ -79,6 +85,8 @@ public:
 	void writeLog(const std::string_view& _msg, FIL *log_file, const reporter_t& _reporter);
 	void changeFilePath(const std::string_view& _file_path);
 	void setMsgMaxLength(const uint32_t& _log_text_max_len);
+	void accumulateLogs(osMailQId &_mail_box);
+	void releaseLogsToFile(FIL *log_file);
 
 };
 

@@ -1,5 +1,6 @@
 #include "Logger.h"
 #include "string.h"
+#include <algorithm>
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -90,3 +91,26 @@ void HAL_FatFs_Logger::changeFilePath(const std::string_view& _file_path) {
 	file_path = _file_path;    
 }
 
+void HAL_FatFs_Logger::accumulateLogs(osMailQId &_mail_box){
+	osEvent evt;
+	log_msg *message = nullptr;
+	do{
+		evt = osMailGet(_mail_box, 1);
+		if (evt.status == osEventMail){
+			message = (log_msg*)evt.value.p;
+			char time_str[22] = "";
+			sprintf(time_str, time_format, message->time.year, message->time.month, message->time.day, message->time.hours, message->time.minutes, message->time.seconds, message->time.milliseconds);
+			std::string_view str{time_str};
+			logs.emplace_back(str, message);
+		}
+		osMailFree(_mail_box, message);
+	}while(evt.status == osEventMail);
+}
+
+void HAL_FatFs_Logger::releaseLogsToFile(FIL *log_file){
+	std::sort(logs.begin(), logs.end());
+	for (const auto& log: logs){
+		writeLog(log.second, log_file);
+	}
+	logs.clear();
+}

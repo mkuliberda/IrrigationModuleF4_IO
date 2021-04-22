@@ -25,7 +25,7 @@ extern const UBaseType_t xArrayIndex;
 TaskHandle_t xSDCardNotifyHandle = NULL;
 TaskHandle_t xSysMonNotifyHandle = NULL;
 TaskHandle_t xIrgCtrlNotifyHandle = NULL;
-const UBaseType_t xTaskIndex = 1;
+const UBaseType_t xTaskCount = 1;
 
 
 osThreadId SysMonitorTaskHandle;
@@ -285,8 +285,9 @@ void SysMonitorTask(void const * argument)
 	BaseType_t FreeStackSpace = 1;
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
+	const uint32_t refresh_interval_msec = 2000;
 
-	ulTaskNotifyTake( xTaskIndex, osWaitForever);
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
 
 	publishLogMessage("Sys monitoring started", sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::INFO);
 
@@ -316,7 +317,7 @@ void SysMonitorTask(void const * argument)
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
-		osDelay(2000);
+		osDelay(refresh_interval_msec);
 	}
 }
 
@@ -338,17 +339,14 @@ void SDCardTask(void const *argument)
 	exceptions_box = osMailCreate(osMailQ(exceptions_box), osThreadGetId());
 	plant_config_msg *plant = nullptr;
 	plants_config_box = osMailCreate(osMailQ(plants_config_box), osThreadGetId());
-	osEvent evt;
-	log_msg *sys_message = nullptr;
-	log_msg *irg_message = nullptr;
-	log_msg *wls_message = nullptr;
+	const uint32_t refresh_interval_msec = 200;
 
 	const std::array<std::string_view, 4> config_file_candidates = {"SECTOR1.TXT", "SECTOR2.TXT", "SECTOR3.TXT",  "SECTOR4.TXT"};
 	HAL_FatFs_Logger &logger = HAL_FatFs_Logger::createInstance();
 	bool mount_success = false;
 
 	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
-	ulTaskNotifyTake( xTaskIndex, osWaitForever);
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
 
 	if(f_mount(&file_system, logical_drive, 1) == FR_OK){
 		mount_success = true;
@@ -375,24 +373,30 @@ void SDCardTask(void const *argument)
 							while (f_gets(config_line, sizeof(config_line), &config_file)){
 								if(config_line[0] == 'A'){
 									activity = (activity_msg*)osMailAlloc(activities_box, osWaitForever);
-									activity->sector_nbr = sector_nbr;
-									activity->activity = Scheduler::parseActivity(config_line);
-									while (osMailPut(activities_box, activity) != osOK);
+									if (activity != NULL){
+										activity->sector_nbr = sector_nbr;
+										activity->activity = Scheduler::parseActivity(config_line);
+										while (osMailPut(activities_box, activity) != osOK);
+									}
 								}
 								else if(config_line[0] == 'E'){
 									exception = (exception_msg*)osMailAlloc(exceptions_box, osWaitForever);
-									exception->sector_nbr = sector_nbr;
-									exception->exception = Scheduler::parseException(config_line);
-									while (osMailPut(exceptions_box, exception) != osOK);
+									if (exception != NULL){
+										exception->sector_nbr = sector_nbr;
+										exception->exception = Scheduler::parseException(config_line);
+										while (osMailPut(exceptions_box, exception) != osOK);
+									}
 								}
 								else if(config_line[0] == 'P'){	//format P001:Y,1,Pelargonia...
 									plant = (plant_config_msg*)osMailAlloc(plants_config_box, osWaitForever);
-									plant->sector_nbr = sector_nbr;
-									const std::string str(config_line);
-									plant->rain_exposed = str.substr(5,1) == "Y" ? true : false;
-									plant->type = atoi(str.substr(7,1).c_str());
-									str.copy(plant->name, MINIMUM(str.length() - 10, PLANT_NAME_LEN - 2), 9);
-									while (osMailPut(plants_config_box, plant) != osOK);
+									if (plant != NULL){
+										plant->sector_nbr = sector_nbr;
+										const std::string str(config_line);
+										plant->rain_exposed = str.substr(5,1) == "Y" ? true : false;
+										plant->type = atoi(str.substr(7,1).c_str());
+										str.copy(plant->name, MINIMUM(str.length() - 10, PLANT_NAME_LEN - 2), 9);
+										while (osMailPut(plants_config_box, plant) != osOK);
+									}
 								}
 							}
 							while (f_close(&config_file) != FR_OK);
@@ -414,49 +418,14 @@ void SDCardTask(void const *argument)
     for( ;; )
     {
 		if(mount_success){
-			std::multimap<char*, log_msg*> msg_map_sorted = {};
-			do{
-				evt = osMailGet(sys_logs_box, 1);
-				if (evt.status == osEventMail){
-					sys_message = (log_msg*)evt.value.p;
-					char time_str[22] = "";
-					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", sys_message->time.year, sys_message->time.month, sys_message->time.day, sys_message->time.hours, sys_message->time.minutes, sys_message->time.seconds, sys_message->time.milliseconds);
-					msg_map_sorted.insert({time_str, sys_message});
-				}
-				osMailFree(sys_logs_box, sys_message);
-			}while(evt.status == osEventMail);
-
-			do{
-				evt = osMailGet(irg_logs_box, 1);
-				if (evt.status == osEventMail){
-					irg_message = (log_msg*)evt.value.p;
-					char time_str[22] = "";
-					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", irg_message->time.year, irg_message->time.month, irg_message->time.day, irg_message->time.hours, irg_message->time.minutes, irg_message->time.seconds, irg_message->time.milliseconds);
-					msg_map_sorted.insert({time_str, irg_message});
-				}
-				osMailFree(irg_logs_box, irg_message);
-			}while(evt.status == osEventMail);
-
-			do{
-				evt = osMailGet(wls_logs_box, 1);
-				if (evt.status == osEventMail){
-					wls_message = (log_msg*)evt.value.p;
-					char time_str[22] = "";
-					sprintf(time_str, "%02u-%02u-%02u %02u:%02u:%02u.%03u", wls_message->time.year, wls_message->time.month, wls_message->time.day, wls_message->time.hours, wls_message->time.minutes, wls_message->time.seconds, wls_message->time.milliseconds);
-					msg_map_sorted.insert({time_str, wls_message});
-
-				}
-				osMailFree(wls_logs_box, wls_message);
-			}while(evt.status == osEventMail);
-
-			for (const auto& msg: msg_map_sorted){
-				logger.writeLog(msg.second, &log_file);
-			}
-
+			logger.accumulateLogs(sys_logs_box);
+			logger.accumulateLogs(irg_logs_box);
+			logger.accumulateLogs(wls_logs_box);
+			logger.releaseLogsToFile(&log_file);
 		}
 
     	HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-    	osDelay(200);
+    	osDelay(refresh_interval_msec);
     }
 }
 
@@ -468,6 +437,7 @@ void WirelessCommTask(void const *argument)
 	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
 
 	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
+	const uint32_t refresh_interval_msec = 200;
 
 	MsgBrokerPtr p_broker;
 	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
@@ -486,7 +456,6 @@ void WirelessCommTask(void const *argument)
 	xTaskNotifyGive( xSysMonNotifyHandle);
 
 	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
-	//xTaskToNotifyFromUsart2Tx = NULL;
 
 	publishLogMessage("Wireless Comm started", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
 
@@ -496,7 +465,7 @@ void WirelessCommTask(void const *argument)
 			publishLogMessage("I'm alive! transmit failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
 		}
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-		osDelay(200);
+		osDelay(refresh_interval_msec);
 	}
 }
 
@@ -524,11 +493,11 @@ void IrrigationControlTask(void const *argument)
 	const struct gpio_s opt_wl_sensor1_gpio = {GPIOB, GPIO_PIN_12};
 	std::unique_ptr<IrrigationSector>(p_sector[SECTORS_AMOUNT]);
 	std::unique_ptr<Watertank>(p_watertank);
-	const uint32_t refresh_interval_msec = 500.0;
+	const uint32_t refresh_interval_msec = 500;
 	double dt_seconds = 500.0_msec;
 	bool time_set{false};
 
-	ulTaskNotifyTake( xTaskIndex, osWaitForever);
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
 
 	publishLogMessage("Irrigation Ctrl started", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
 
