@@ -74,7 +74,7 @@ bool Watertank::update(const double& _dt) {
 		case sensor_type_t::waterlevel_sensor:
 			if (sensor->isValid() == true) {
 				errcode.reset(22 + water_level_readings_count);
-				if (sensor->read()) { //TODO: check if 1 means submersed on STM32
+				if (sensor->read() == 1) { //TODO: check if 1 means submersed on STM32
 					temp_water_level_percent = this->waterlevelConvertToPercent(sensor->getMountHeightMeters());
 					if (temp_water_level_percent > water_level_percent) water_level_percent = temp_water_level_percent;
 				}

@@ -17,6 +17,7 @@
 #include "HAL_UART_MsgBroker.h"
 #include "MsgBrokerFactory.h"
 #include "HAL_UART_ESP01S_MsgParser.h"
+#include <chrono>
 
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
 extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
@@ -51,6 +52,7 @@ osSemaphoreDef(time_rdy_sem);
 osSemaphoreId config_rdy_sem;
 osSemaphoreDef(config_rdy_sem);
 
+using namespace std::chrono;
 
 void SysMonitorTask(void const * argument);
 void SDCardTask(void const *argument);
@@ -429,7 +431,6 @@ void SDCardTask(void const *argument)
     }
 }
 
-
 void WirelessCommTask(void const *argument)
 {
 	 /* Store the handle of the calling task. */
@@ -473,14 +474,14 @@ void IrrigationControlTask(void const *argument)
 {
 	xIrgCtrlNotifyHandle = xTaskGetCurrentTaskHandle();
 	irg_logs_box = osMailCreate(osMailQ(irg_logs_box), osThreadGetId());
-	osEvent evt;
+	osEvent evt{};
 	plant_config_msg *msg = nullptr;
 
-	RTC_TimeTypeDef rtc_time;
-	RTC_DateTypeDef rtc_date;
-	TimeStamp_t timestamp, timestamp_prev;
+	RTC_TimeTypeDef rtc_time{};
+	RTC_DateTypeDef rtc_date{};
+	TimeStamp_t timestamp{}, timestamp_prev{};
 
-	bool sector_active_prev[SECTORS_AMOUNT] = {};
+	bool sector_active_prev[SECTORS_AMOUNT]{};
 	Scheduler sector_schedule[SECTORS_AMOUNT] = {Scheduler("SECTOR1"), Scheduler("SECTOR2"), Scheduler("SECTOR3"), Scheduler("SECTOR4")};
 	std::array<std::array<struct gpio_s, 2>, SECTORS_AMOUNT> pump_ctrl_gpio;
 	pump_ctrl_gpio[0] = {{{ GPIOE, GPIO_PIN_0 }, { GPIOE, GPIO_PIN_1 }}};

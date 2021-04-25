@@ -66,12 +66,13 @@ struct IrrigationSectorInfo_s&	IrrigationSector::getInfo(){
 }
 
 bool IrrigationSector::setPlantMoistureByName(const std::string_view& _plant_name, const float& _moisture_percent){
+	bool retval = false;
 	for (auto &plant : vPlants) {
 		if (plant->getName() == _plant_name) {
-			return plant->setMoisturePercent(_moisture_percent);
+			retval = plant->setMoisturePercent(_moisture_percent);
 		}
 	}
-	return false;
+	return retval;
 }
 
 
