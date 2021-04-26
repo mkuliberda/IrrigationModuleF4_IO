@@ -13,6 +13,8 @@
 #include <time.h>
 #include <string_view>
 
+//TODO: refactor all the legacy macros to enums
+
 //"A001:20-05-01,20-09-30,MON,06-00-00,00-10-00";
 #define ACTIVITY_LENGTH 44
 #define ACTIVITY_ID_POS 1

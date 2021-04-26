@@ -1,6 +1,8 @@
 #include "Logger.h"
 #include "string.h"
 #include <algorithm>
+#include <bitset>
+#include "utilities.h"
 #ifdef __cplusplus
  extern "C" {
 #endif
@@ -113,4 +115,52 @@ void HAL_FatFs_Logger::releaseLogsToFile(FIL *log_file){
 		writeLog(log.second, log_file);
 	}
 	logs.clear();
+}
+
+uint8_t HAL_FatFs_Logger::publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const log_msg_prio_t &_msg_priority)
+{
+	std::bitset<8> errcode;
+	/*******errcode**********
+	 * 00000000
+	 * ||||||||->(0) 1 if msg was too long and had to be shortened
+	 * |||||||-->(1) 1 if osMailPut was unsuccessfull
+	 * ||||||--->(2) 1 if
+	 * |||||---->(3) 1 if
+	 * ||||----->(4) 1 if
+	 * |||------>(5) 1 if
+	 * ||------->(6) 1 if
+	 * |-------->(7) 1 if
+	 *************************/
+	RTC_TimeTypeDef rtc_time;
+	RTC_DateTypeDef rtc_date;
+
+	HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+	HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+	const uint8_t _maxlen = LOG_TEXT_LEN;
+
+	log_msg *msg = (log_msg*)osMailAlloc(mail_box, osWaitForever);
+
+	msg->time.day = rtc_date.Date;
+	msg->time.hours = rtc_time.Hours;
+	msg->time.minutes = rtc_time.Minutes;
+	msg->time.month = rtc_date.Month;
+	msg->time.seconds = rtc_time.Seconds;
+	msg->time.year = rtc_date.Year;
+	msg->time.milliseconds = 1000 * (rtc_time.SecondFraction - rtc_time.SubSeconds) / (rtc_time.SecondFraction + 1);
+
+	if (msg_txt.length() >= _maxlen){
+		msg_txt = msg_txt.substr(msg_txt.length() - _maxlen + 1, _maxlen - 1);
+		errcode.set(0, true);
+	}
+	msg->reporter_id = _reporter;
+	msg->len = msg_txt.length() + 1;
+	msg->priority = _msg_priority;
+	msg_txt.copy(msg->text, msg_txt.length(), 0);
+	msg->text[MINIMUM((std::size_t)(_maxlen - 1), msg_txt.length())] = '\0';
+
+	if (osMailPut(mail_box, msg) != osOK){
+		errcode.set(1, true);
+	}
+
+	return static_cast<uint8_t>(errcode.to_ulong());
 }

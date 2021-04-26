@@ -101,13 +101,30 @@ bool HAL_UART_MsgBroker::requestData(const recipient_t& _recipient, const std::s
 	return result;
 }
 
-bool HAL_UART_MsgBroker::setParser(Parser *_parser){
+bool HAL_UART_MsgBroker::setParser(MsgParser *_parser){
 	if (_parser != nullptr){
 		parserInstance = _parser;
 		return true;
 	}
 	return false;
 }
+bool HAL_UART_MsgBroker::setEncoder(MsgEncoder *_encoder){
+	return false;
+}
+
+bool HAL_UART_MsgBroker::readData(const size_t& _size, void(*action)(const std::string&)){
+	memset(rxBuffer, '\0', BUFFER_SIZE);
+	if (devValid){
+		HAL_UART_Receive_DMA(UART_Handle, rxBuffer, _size);
+	}
+	ulTaskNotifyTake( xArrayIndex, osWaitForever);
+	if(rxBuffer[0] == '{' && rxBuffer[_size-1] == '}'){
+		std::string time_str{(char*)rxBuffer};
+		return (parserInstance != nullptr) ? parserInstance->parseString(time_str, action) : false;
+	}
+	return false;
+}
+
 bool HAL_UART_MsgBroker::readData(const size_t& _size){
 	memset(rxBuffer, '\0', BUFFER_SIZE);
 	if (devValid){

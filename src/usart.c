@@ -26,6 +26,8 @@
 /* USER CODE BEGIN 0 */
 TaskHandle_t xTaskToNotifyFromUsart2Rx = NULL;
 TaskHandle_t xTaskToNotifyFromUsart2Tx = NULL;
+TaskHandle_t xTaskToNotifyFromUsart3Rx = NULL;
+TaskHandle_t xTaskToNotifyFromUsart3Tx = NULL;
 const UBaseType_t xArrayIndex = 1;
 
 /* USER CODE END 0 */
@@ -271,6 +273,23 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       called portEND_SWITCHING_ISR(). */
       portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
   }
+  else if (huart->Instance == USART3){
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+      /* At this point xTaskToNotifyFromUsart3Rx should not be NULL as
+      a transmission was in progress. */
+      configASSERT( xTaskToNotifyFromUsart3Rx != NULL );
+
+      /* Notify the task that the transmission is complete. */
+      vTaskNotifyGiveFromISR( xTaskToNotifyFromUsart3Rx, &xHigherPriorityTaskWoken );
+
+      /* If xHigherPriorityTaskWoken is now set to pdTRUE then a
+      context switch should be performed to ensure the interrupt
+      returns directly to the highest priority task.  The macro used
+      for this purpose is dependent on the port in use and may be
+      called portEND_SWITCHING_ISR(). */
+      portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  }
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
@@ -283,6 +302,23 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 
     /* Notify the task that the transmission is complete. */
     vTaskNotifyGiveFromISR( xTaskToNotifyFromUsart2Tx, &xHigherPriorityTaskWoken );
+
+    /* If xHigherPriorityTaskWoken is now set to pdTRUE then a
+    context switch should be performed to ensure the interrupt
+    returns directly to the highest priority task.  The macro used
+    for this purpose is dependent on the port in use and may be
+    called portEND_SWITCHING_ISR(). */
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+  }
+  else if (huart->Instance == USART3){
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    /* At this point xTaskToNotifyFromUsart3Rx should not be NULL as
+    a transmission was in progress. */
+    configASSERT( xTaskToNotifyFromUsart3Tx != NULL );
+
+    /* Notify the task that the transmission is complete. */
+    vTaskNotifyGiveFromISR( xTaskToNotifyFromUsart3Tx, &xHigherPriorityTaskWoken );
 
     /* If xHigherPriorityTaskWoken is now set to pdTRUE then a
     context switch should be performed to ensure the interrupt

@@ -25,8 +25,11 @@ public:
 	bool sendMsg(const recipient_t& _recipient, const std::string& _msg, const bool& _wait_until_cplt = false) override;
 	bool publishData(const recipient_t& _recipient, const char* _publisher, std::unordered_map<const char*, int32_t> _values, const bool& _wait_until_cplt = false) override;
 	bool requestData(const recipient_t& _recipient, const std::string& _data_key, const bool& _wait_until_cplt = false) override;
-	bool setParser(Parser *_parser);
-	bool readData(const size_t& _size);
+	bool setParser(MsgParser *_parser) override;
+	bool setEncoder(MsgEncoder *_encoder) override;
+	bool readData(const size_t& _size, void(*action)(const std::string&)) override;
+	bool readData(const size_t& _size) override;
+
 
 private:
     bool transmit(const std::string& _str, const bool& _blocking_mode); 
@@ -36,7 +39,7 @@ private:
 	UART_HandleTypeDef *UART_Handle{};
 	uint8_t txBuffer[BUFFER_SIZE]{};
 	uint8_t rxBuffer[BUFFER_SIZE]{};
-	Parser *parserInstance{};
+	MsgParser *parserInstance{};
 	bool devValid{false};
 };
 

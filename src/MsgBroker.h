@@ -5,7 +5,8 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "Parser.h"
+#include "MsgParser.h"
+#include "MsgEncoder.h"
 
 #define RASPBERRY_PI_STR "rpi\\"
 #define GOOGLE_HOME_STR "goo\\"
@@ -28,8 +29,10 @@ public:
 	virtual bool sendMsg(const recipient_t& _recipient, const std::string& _msg, const bool& _wait_until_cplt = false) =0;
 	virtual bool publishData(const recipient_t& _recipient, const char* _publisher, std::unordered_map<const char*, int32_t> _values, const bool& _wait_until_cplt = false) =0;
 	virtual bool requestData(const recipient_t& _recipient, const std::string& _data_key, const bool& _wait_until_cplt = false) =0;
+	virtual bool readData(const size_t& _size, void(*action)(const std::string&)) =0;
 	virtual bool readData(const size_t& _size) =0;
-	virtual bool setParser(Parser *_parser) =0;
+	virtual bool setParser(MsgParser *_parser) =0;
+	virtual bool setEncoder(MsgEncoder *_encoder) =0;
 	virtual ~MsgBroker() =default;
 
 };

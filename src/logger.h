@@ -30,7 +30,7 @@
 #define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
 #define LOG_FILE  "LOG.TXT" 
 
-#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Generic)
+#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Task_Gsm)C(Generic)
 #define C(x) x,
 enum reporter_t { REPORTERS TOP };
 #undef C
@@ -87,6 +87,7 @@ public:
 	void setMsgMaxLength(const uint32_t& _log_text_max_len);
 	void accumulateLogs(osMailQId &_mail_box);
 	void releaseLogsToFile(FIL *log_file);
+	static uint8_t publishLogMessage(std::string_view msg_txt, osMailQId &mail_box, const reporter_t &_reporter, const log_msg_prio_t &_msg_priority);
 
 };
 
