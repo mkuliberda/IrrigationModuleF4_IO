@@ -78,7 +78,7 @@
 #define EXCEPTION_END_SEC_POS 38
 #define EXCEPTION_END_SEC_LEN 2
 
-typedef struct {
+struct TimeStamp_t{
 	uint8_t weekday;
 	uint8_t hours;
 	uint8_t minutes;
@@ -87,7 +87,7 @@ typedef struct {
 	uint8_t month;
 	uint8_t year;
 	uint32_t milliseconds;
-}TimeStamp_t;
+};
 
 struct period_s{
 	uint8_t day;

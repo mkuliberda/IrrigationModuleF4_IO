@@ -100,7 +100,7 @@ void HAL_FatFs_Logger::accumulateLogs(osMailQId &_mail_box){
 		evt = osMailGet(_mail_box, 1);
 		if (evt.status == osEventMail){
 			message = (log_msg*)evt.value.p;
-			char time_str[22] = "";
+			char time_str[TIME_STR_LEN] = "";
 			sprintf(time_str, time_format, message->time.year, message->time.month, message->time.day, message->time.hours, message->time.minutes, message->time.seconds, message->time.milliseconds);
 			std::string_view str{time_str};
 			logs.emplace_back(str, message);

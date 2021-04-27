@@ -442,8 +442,6 @@ void IrrigationControlTask(void const *argument)
 {
 	xIrgCtrlNotifyHandle = xTaskGetCurrentTaskHandle();
 	irg_logs_box = osMailCreate(osMailQ(irg_logs_box), osThreadGetId());
-	osEvent evt{};
-	plant_config_msg *msg = nullptr;
 
 	RTC_TimeTypeDef rtc_time{};
 	RTC_DateTypeDef rtc_date{};
@@ -470,11 +468,15 @@ void IrrigationControlTask(void const *argument)
 
 	HAL_FatFs_Logger::publishLogMessage("Running", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
 
+	//TODO: use director class for building sectors
 	ConcreteIrrigationSectorBuilder* sector_builder = new ConcreteIrrigationSectorBuilder[SECTORS_AMOUNT]; //leave as pointer to delete when not needed anymore
 	for (uint8_t i=0; i<SECTORS_AMOUNT; ++i){
 		sector_builder[i].produceDRV8833PumpWithController(pump_controller_mode_t::external, PUMP_IDLETIME_REQUIRED_SEC, PUMP_RUNTIME_LIMIT_SEC, pump_ctrl_gpio[i], pump_led_gpio[i], pump_fault_gpio[i], pump_mode_gpio[i]);
 	}
-
+	
+	//TODO: looks like a function
+	osEvent evt{};
+	plant_config_msg *msg{nullptr};
 	do{
 		evt = osMailGet(plants_config_box, 10);
 		if (evt.status == osEventMail){
@@ -494,6 +496,7 @@ void IrrigationControlTask(void const *argument)
 	}
 
 	delete[] sector_builder;
+	
 
 	ConcreteWatertankBuilder *watertank_builder = new ConcreteWatertankBuilder;
 	watertank_builder->produceOpticalWaterLevelSensor(0.0825_m,  opt_wl_sensor1_gpio);

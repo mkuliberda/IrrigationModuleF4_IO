@@ -28,6 +28,7 @@
 #define TIME_FORMAT_LEN (sizeof(TIME_FORMAT))
 #define LOG_FORMAT "%02d-%02d-%02d %02d:%02d:%02d.%03d %s: %s\n"
 #define LOG_FORMAT_LEN (sizeof(LOG_FORMAT))
+#define TIME_STR_LEN 22
 #define LOG_FILE  "LOG.TXT" 
 
 #define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Task_Gsm)C(Generic)

@@ -14,13 +14,14 @@ class HAL_UART_MsgBroker :
 	public MsgBroker
 {
 public:
+
+	HAL_UART_MsgBroker() =default;
     HAL_UART_MsgBroker(void* _devHandle){
        if (_devHandle != nullptr){
 		   UART_Handle = (UART_HandleTypeDef*)_devHandle;
 		   devValid = true;
 	   } 
     }
-	~HAL_UART_MsgBroker() =default;
 	bool assignDevice(void* DevHandle) override;
 	bool sendMsg(const recipient_t& _recipient, const std::string& _msg, const bool& _wait_until_cplt = false) override;
 	bool publishData(const recipient_t& _recipient, const char* _publisher, std::unordered_map<const char*, int32_t> _values, const bool& _wait_until_cplt = false) override;
@@ -29,6 +30,9 @@ public:
 	bool setEncoder(MsgEncoder *_encoder) override;
 	bool readData(const size_t& _size, void(*action)(const std::string&)) override;
 	bool readData(const size_t& _size) override;
+	HAL_UART_MsgBroker(HAL_UART_MsgBroker const &) = delete;
+	HAL_UART_MsgBroker& operator=(HAL_UART_MsgBroker const&) = delete;
+	~HAL_UART_MsgBroker() =default;
 
 
 private:
