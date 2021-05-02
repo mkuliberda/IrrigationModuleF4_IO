@@ -212,7 +212,7 @@ protected:
 
 class Pump {
 public:
-	Pump() {}; //required default constructor
+	Pump() =default; //required default constructor
 	Pump(const uint8_t& _id, const uint32_t& _idletime_required_seconds = 0, const uint32_t& _runtime_limit_seconds = 4294967295, const pump_type_t& _type = pump_type_t::generic) {
 		imp_ = new PumpImp(_id, _type, _idletime_required_seconds, _runtime_limit_seconds);
 	}
