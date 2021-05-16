@@ -461,16 +461,18 @@ void WirelessReceiverTask(void const *argument)
 	xTaskNotifyGive( xSmsRxNotifyHandle);
 	xTaskNotifyGive( xSmsTxNotifyHandle);
 	xTaskNotifyGive( xWlsTxNotifyHandle);
-	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
 
 	HAL_FatFs_Logger::publishLogMessage("Running", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::INFO);
 
 	for( ;; )
 	{
-		osDelay(1000);
-		//if (esp01s_msg_receiver->readData()){
-		//	IncomingMessage msg = esp01s_msg_receiver->getIncoming();
-		//}
+		//osDelay(1000);
+		if (esp01s_msg_receiver->readData()){
+			if(IncomingMessage msg = esp01s_msg_receiver->getIncoming(); msg.sender.object == ExternalObject_t::ntp_server && msg.recipient.object == InternalObject_t::system){
+				HAL_FatFs_Logger::publishLogMessage("Current time updated!", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::CRITICAL);
+				HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+			}
+		}
 	}
 }
 
