@@ -1,16 +1,16 @@
-#ifndef SMS_MsgParser_H_
-#define SMS_MsgParser_H_
-
+#pragma once
 #include "MsgParser.h"
-
-class SMS_MsgParser: public MsgParser{
+class Sms_MsgParser :
+	public MsgParser
+{
 public:
-    SMS_MsgParser() =default;
-    bool parseString(const std::string& _str) override;
-    bool parseString(const std::string& _str, void(*action)(const std::string&)) override;
-    SMS_MsgParser(SMS_MsgParser const &) =delete;
-	SMS_MsgParser& operator=(SMS_MsgParser const&) =delete;
-    ~SMS_MsgParser() =default;
+	Sms_MsgParser() = default;
+	IncomingMessage parseIncoming(uint8_t *buffer, const size_t& _len) override;
+	bool parseString(const std::string& _str) override;
+	bool parseString(const std::string& _str, void(*callback)(const std::string&)) override;
+
+	Sms_MsgParser(Sms_MsgParser const &) = delete;
+	Sms_MsgParser& operator=(Sms_MsgParser const&) = delete;
+	~Sms_MsgParser() override = default;
 };
 
-#endif

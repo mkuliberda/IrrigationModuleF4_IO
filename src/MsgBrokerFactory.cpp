@@ -1,12 +1,12 @@
 #include "MsgBrokerFactory.h"
-#include "HAL_UART_MsgBroker.h"
+#include "HAL_UART_DMA_MsgBroker.h"
 #include <memory>
 
-MsgBrokerPtr MsgBrokerFactory::create(const msg_broker_type_t & _type, void* _devHandle)
+MsgBrokerPtr MsgBrokerFactory::create(const MsgBrokerType& _type, const size_t& _msg_in_len, void *_dev_handle)
 {
 	switch (_type) {
-	case msg_broker_type_t::hal_uart:
-		return std::make_unique<HAL_UART_MsgBroker>(_devHandle);
+	case MsgBrokerType::hal_uart_dma:
+		return std::make_unique<HAL_UART_DMA_MsgBroker>(_msg_in_len, _dev_handle);
 	default:
 		return nullptr;
 	}

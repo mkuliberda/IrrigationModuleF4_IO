@@ -31,7 +31,7 @@ HAL_FatFs_Logger& HAL_FatFs_Logger::createInstance(){
  * @param _msg 
  * @param log_file 
  */
-void HAL_FatFs_Logger::writeLog(log_msg *_msg, FIL *log_file) {
+void HAL_FatFs_Logger::writeLog(LogMsg *_msg, FIL *log_file) {
 	if (valid){
 		osMutexWait(logger_mutex, osWaitForever);
 		char text[LOG_TEXT_LEN] = "";
@@ -95,11 +95,11 @@ void HAL_FatFs_Logger::changeFilePath(const std::string_view& _file_path) {
 
 void HAL_FatFs_Logger::accumulateLogs(osMailQId &_mail_box){
 	osEvent evt;
-	log_msg *message = nullptr;
+	LogMsg *message = nullptr;
 	do{
 		evt = osMailGet(_mail_box, 1);
 		if (evt.status == osEventMail){
-			message = (log_msg*)evt.value.p;
+			message = (LogMsg*)evt.value.p;
 			char time_str[TIME_STR_LEN] = "";
 			sprintf(time_str, time_format, message->time.year, message->time.month, message->time.day, message->time.hours, message->time.minutes, message->time.seconds, message->time.milliseconds);
 			std::string_view str{time_str};
@@ -138,7 +138,7 @@ uint8_t HAL_FatFs_Logger::publishLogMessage(std::string_view msg_txt, osMailQId 
 	HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 	const uint8_t _maxlen = LOG_TEXT_LEN;
 
-	log_msg *msg = (log_msg*)osMailAlloc(mail_box, osWaitForever);
+	LogMsg *msg = (LogMsg*)osMailAlloc(mail_box, osWaitForever);
 
 	msg->time.day = rtc_date.Date;
 	msg->time.hours = rtc_time.Hours;

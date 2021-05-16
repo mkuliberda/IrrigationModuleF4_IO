@@ -14,10 +14,15 @@
 #include "usart.h"
 #include <map>
 #include <queue>
-#include "HAL_UART_MsgBroker.h"
-#include "MsgBrokerFactory.h"
-#include "ESP01S_MsgParser.h"
 #include <chrono>
+#include "HAL_UART_DMA_MsgBroker.h"
+#include "MsgBrokerFactory.h"
+#include "Esp01s_MsgParser.h"
+#include "Messages.h"
+#include "MsgBroker.h"
+#include "MsgBrokerFactory.h"
+#include "MsgEncoder.h"
+#include "SMS_MsgParser.h"
 
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
 extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
@@ -28,38 +33,50 @@ extern const UBaseType_t xArrayIndex;
 TaskHandle_t xSDCardNotifyHandle = NULL;
 TaskHandle_t xSysMonNotifyHandle = NULL;
 TaskHandle_t xIrgCtrlNotifyHandle = NULL;
-TaskHandle_t xGsmNotifyHandle = NULL;
+TaskHandle_t xSmsRxNotifyHandle = NULL;
+TaskHandle_t xSmsTxNotifyHandle = NULL;
+TaskHandle_t xWlsTxNotifyHandle = NULL;
 const UBaseType_t xTaskCount = 1;
 
 
 osThreadId SysMonitorTaskHandle;
 osThreadId SDCardTaskHandle;
-osThreadId WirelessCommTaskHandle;
+osThreadId WirelessReceiverTaskHandle;
+osThreadId WirelessTransmitterTaskHandle;
 osThreadId IrrigationControlTaskHandle;
-osThreadId GsmTaskHandle;
+osThreadId SmsReceiverTaskHandle;
+osThreadId SmsTransmitterTaskHandle;
 
 osMailQId activities_box;
-osMailQDef(activities_box, 42, activity_msg);
+osMailQDef(activities_box, 42, ActivityMsg);
 osMailQId exceptions_box;
-osMailQDef(exceptions_box, 6, exception_msg);
+osMailQDef(exceptions_box, 6, ExceptionMsg);
 osMailQId plants_config_box;
-osMailQDef(plants_config_box, 20, plant_config_msg);
+osMailQDef(plants_config_box, 20, PlantConfigMsg);
 osMailQId sys_logs_box;
-osMailQDef(sys_logs_box, 10, log_msg);
+osMailQDef(sys_logs_box, 10, LogMsg);
 osMailQId irg_logs_box;
-osMailQDef(irg_logs_box, 10, log_msg);
-osMailQId wls_logs_box;
-osMailQDef(wls_logs_box, 10, log_msg);
-osMailQId gsm_logs_box;
-osMailQDef(gsm_logs_box, 10, log_msg);
+osMailQDef(irg_logs_box, 10, LogMsg);
+osMailQId wls_rx_logs_box;
+osMailQDef(wls_rx_logs_box, 10, LogMsg);
+osMailQId wls_tx_logs_box;
+osMailQDef(wls_tx_logs_box, 10, LogMsg);
+osMailQId sms_rx_logs_box;
+osMailQDef(sms_rx_logs_box, 10, LogMsg);
+osMailQId sms_tx_logs_box;
+osMailQDef(sms_tx_logs_box, 10, LogMsg);
+osMailQId internal_msg_box;
+osMailQDef(internal_msg_box, 10, InternalMessage);
 
 using namespace std::chrono;
 
 void SysMonitorTask(void const * argument);
 void SDCardTask(void const *argument);
-void WirelessCommTask(void const *argument);
+void WirelessReceiverTask(void const *argument);
+void WirelessTransmitterTask(void const *argument);
 void IrrigationControlTask(void const *argument);
-void GsmTask(void const *argument);
+void SmsReceiverTask(void const *argument);
+void SmsTransmitterTask(void const *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -99,12 +116,12 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer, Stack
 osEvent updateSectorsActivities(Scheduler *schedule, osMailQId &mail_box)
 {
 	osEvent evt;
-	activity_msg *msg = nullptr;
+	ActivityMsg *msg = nullptr;
 
 	do{
 		evt = osMailGet(mail_box, 1);
 		if (evt.status == osEventMail){
-			msg = (activity_msg*)evt.value.p;
+			msg = (ActivityMsg*)evt.value.p;
 			switch (msg->sector_nbr){
 			case 0:
 				schedule[0].addActivity(msg->activity);
@@ -131,12 +148,12 @@ osEvent updateSectorsActivities(Scheduler *schedule, osMailQId &mail_box)
 osEvent updateSectorsExceptions(Scheduler *schedule, osMailQId &mail_box)
 {
 	osEvent evt;
-	exception_msg *msg = nullptr;
+	ExceptionMsg *msg = nullptr;
 
 	do{
 		evt = osMailGet(mail_box, 1);
 		if (evt.status == osEventMail){
-			msg = (exception_msg*)evt.value.p;
+			msg = (ExceptionMsg*)evt.value.p;
 			switch (msg->sector_nbr){
 			case 0:
 				schedule[0].addException(msg->exception);
@@ -205,21 +222,27 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
 
-  //Wireless task must start first since it gets current time from external server
-  osThreadDef(wirelessTask, WirelessCommTask, osPriority::osPriorityHigh, 0, 20*configMINIMAL_STACK_SIZE);
-  WirelessCommTaskHandle = osThreadCreate(osThread(wirelessTask), NULL);
-
+  //WirelessReceiverTask must start first since it gets current time from external server
+  osThreadDef(wirelessreceiverTask, WirelessReceiverTask, osPriority::osPriorityHigh, 0, 20*configMINIMAL_STACK_SIZE);
+  WirelessReceiverTaskHandle = osThreadCreate(osThread(wirelessreceiverTask), NULL);
+  
   osThreadDef(sysmonitorTask, SysMonitorTask, osPriority::osPriorityRealtime, 0, 30*configMINIMAL_STACK_SIZE);
   SysMonitorTaskHandle = osThreadCreate(osThread(sysmonitorTask), NULL);
 
   osThreadDef(sdcardTask, SDCardTask, osPriority::osPriorityNormal, 0, 40*configMINIMAL_STACK_SIZE);
   SDCardTaskHandle = osThreadCreate(osThread(sdcardTask), NULL);
   
-  osThreadDef(irrigationTask, IrrigationControlTask, osPriority::osPriorityNormal, 0, 60*configMINIMAL_STACK_SIZE);
+  osThreadDef(irrigationTask, IrrigationControlTask, osPriority::osPriorityNormal, 0,20*configMINIMAL_STACK_SIZE);
   IrrigationControlTaskHandle = osThreadCreate(osThread(irrigationTask), NULL);
   
-  osThreadDef(gsmTask, GsmTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
-  GsmTaskHandle = osThreadCreate(osThread(gsmTask), NULL);
+  osThreadDef(wirelesstransmitterTask, WirelessTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  WirelessTransmitterTaskHandle = osThreadCreate(osThread(wirelesstransmitterTask), NULL);
+  
+  osThreadDef(smsreceiverTask, SmsReceiverTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  SmsReceiverTaskHandle = osThreadCreate(osThread(smsreceiverTask), NULL);
+  
+  osThreadDef(smstransmitterTask, SmsTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  SmsTransmitterTaskHandle = osThreadCreate(osThread(smstransmitterTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -241,9 +264,11 @@ void SysMonitorTask(void const * argument)
 	size_t prev_min_heap_size = 0;
 	TaskStatus_t TaskStatus;
 	configSTACK_DEPTH_TYPE SDCardPrevStackHighWaterMark = 0;
-	configSTACK_DEPTH_TYPE WirelessCommPrevStackHighWaterMark = 0;
+	configSTACK_DEPTH_TYPE WirelessRxPrevStackHighWaterMark = 0;
+	configSTACK_DEPTH_TYPE WirelessTxPrevStackHighWaterMark = 0;
 	configSTACK_DEPTH_TYPE IrrigationControlPrevStackHighWaterMark = 0;
-	configSTACK_DEPTH_TYPE GsmPrevStackHighWaterMark = 0;
+	configSTACK_DEPTH_TYPE SmsRxPrevStackHighWaterMark = 0;
+	configSTACK_DEPTH_TYPE SmsTxPrevStackHighWaterMark = 0;
 	BaseType_t FreeStackSpace = 1;
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
@@ -267,10 +292,16 @@ void SysMonitorTask(void const * argument)
     		SDCardPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
-    	vTaskGetInfo(WirelessCommTaskHandle, &TaskStatus, FreeStackSpace, State);
-    	if (TaskStatus.usStackHighWaterMark != WirelessCommPrevStackHighWaterMark){
-    		std::string_view msg =  "WlsCom HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
-    		WirelessCommPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
+    	vTaskGetInfo(WirelessReceiverTaskHandle, &TaskStatus, FreeStackSpace, State);
+    	if (TaskStatus.usStackHighWaterMark != WirelessRxPrevStackHighWaterMark){
+    		std::string_view msg =  "WlsRx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
+    		WirelessRxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
+    		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
+    	}
+		vTaskGetInfo(WirelessTransmitterTaskHandle, &TaskStatus, FreeStackSpace, State);
+    	if (TaskStatus.usStackHighWaterMark != WirelessTxPrevStackHighWaterMark){
+    		std::string_view msg =  "WlsTx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
+    		WirelessTxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
     	vTaskGetInfo(IrrigationControlTaskHandle, &TaskStatus, FreeStackSpace, State);
@@ -279,10 +310,15 @@ void SysMonitorTask(void const * argument)
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
-		vTaskGetInfo(GsmTaskHandle, &TaskStatus, FreeStackSpace, State);
-    	if (TaskStatus.usStackHighWaterMark != GsmPrevStackHighWaterMark){
-    		std::string_view msg =  "Gsm HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
-    		GsmPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
+		vTaskGetInfo(SmsReceiverTaskHandle, &TaskStatus, FreeStackSpace, State);
+    	if (TaskStatus.usStackHighWaterMark != SmsRxPrevStackHighWaterMark){
+    		std::string_view msg =  "SmsRx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
+    		SmsRxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
+    		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
+    	}
+    	if (TaskStatus.usStackHighWaterMark != SmsTxPrevStackHighWaterMark){
+    		std::string_view msg =  "SmsTx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
+    		SmsTxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
 		osDelay(refresh_interval_msec);
@@ -301,11 +337,11 @@ void SDCardTask(void const *argument)
 	FILINFO file_info;
 	char cwd_buffer[80] = "/";
 
-	activity_msg *activity = nullptr;
+	ActivityMsg *activity = nullptr;
 	activities_box = osMailCreate(osMailQ(activities_box), osThreadGetId());
-	exception_msg *exception = nullptr;
+	ExceptionMsg *exception = nullptr;
 	exceptions_box = osMailCreate(osMailQ(exceptions_box), osThreadGetId());
-	plant_config_msg *plant = nullptr;
+	PlantConfigMsg *plant = nullptr;
 	plants_config_box = osMailCreate(osMailQ(plants_config_box), osThreadGetId());
 	const uint32_t refresh_interval_msec = 200;
 
@@ -340,7 +376,7 @@ void SDCardTask(void const *argument)
 							char config_line[MAXIMUM(ACTIVITY_LENGTH+1, EXCEPTION_LENGTH+1)] = "";
 							while (f_gets(config_line, sizeof(config_line), &config_file)){
 								if(config_line[0] == 'A'){
-									activity = (activity_msg*)osMailAlloc(activities_box, osWaitForever);
+									activity = (ActivityMsg*)osMailAlloc(activities_box, osWaitForever);
 									if (activity != NULL){
 										activity->sector_nbr = sector_nbr;
 										activity->activity = Scheduler::parseActivity(config_line);
@@ -348,7 +384,7 @@ void SDCardTask(void const *argument)
 									}
 								}
 								else if(config_line[0] == 'E'){
-									exception = (exception_msg*)osMailAlloc(exceptions_box, osWaitForever);
+									exception = (ExceptionMsg*)osMailAlloc(exceptions_box, osWaitForever);
 									if (exception != NULL){
 										exception->sector_nbr = sector_nbr;
 										exception->exception = Scheduler::parseException(config_line);
@@ -356,7 +392,7 @@ void SDCardTask(void const *argument)
 									}
 								}
 								else if(config_line[0] == 'P'){	//format P001:Y,1,Pelargonia...
-									plant = (plant_config_msg*)osMailAlloc(plants_config_box, osWaitForever);
+									plant = (PlantConfigMsg*)osMailAlloc(plants_config_box, osWaitForever);
 									if (plant != NULL){
 										plant->sector_nbr = sector_nbr;
 										const std::string str(config_line);
@@ -388,8 +424,10 @@ void SDCardTask(void const *argument)
 		if(mount_success){
 			logger.accumulateLogs(sys_logs_box);
 			logger.accumulateLogs(irg_logs_box);
-			logger.accumulateLogs(wls_logs_box);
-			logger.accumulateLogs(gsm_logs_box);
+			logger.accumulateLogs(wls_rx_logs_box);
+			logger.accumulateLogs(wls_tx_logs_box);
+			logger.accumulateLogs(sms_rx_logs_box);
+			logger.accumulateLogs(sms_tx_logs_box);
 			logger.releaseLogsToFile(&log_file);
 		}
 
@@ -398,45 +436,110 @@ void SDCardTask(void const *argument)
     }
 }
 
-void WirelessCommTask(void const *argument)
+void WirelessReceiverTask(void const *argument)
 {
 	 /* Store the handle of the calling task. */
     xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
-	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
+	wls_rx_logs_box = osMailCreate(osMailQ(wls_rx_logs_box), osThreadGetId());
 
-	wls_logs_box = osMailCreate(osMailQ(wls_logs_box), osThreadGetId());
-	const uint32_t refresh_interval_msec = 200;
+	MsgBrokerPtr esp01s_msg_receiver = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, esp01s_msg_len, &huart2);
+	Esp01s_MsgParser esp01s_msg_parser;
+	esp01s_msg_receiver->setDefaultParser(&esp01s_msg_parser);
+	esp01s_msg_receiver->setInternalAddresses(&internal_entities);
 
-	MsgBrokerPtr p_broker;
-	p_broker = MsgBrokerFactory::create(msg_broker_type_t::hal_uart, &huart2);
-	ESP01S_MsgParser esp01s_parser;
-	p_broker->setParser(&esp01s_parser);
-
-	if (!p_broker->requestData(recipient_t::ntp_server, "CurrentTime", true)){
-		HAL_FatFs_Logger::publishLogMessage("Curr time transmit request failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
-	}
-	if(p_broker->readData(EXT_TIME_STR_LEN, setRtcFromStr)){
-		HAL_FatFs_Logger::publishLogMessage("Current time set!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
+	esp01s_msg_receiver->readData();
+	IncomingMessage msg = esp01s_msg_receiver->getIncoming();
+	if(msg.sender.object == ExternalObject_t::ntp_server && msg.recipient.object == InternalObject_t::system){
+		setRtcFromIncoming(msg);
+		HAL_FatFs_Logger::publishLogMessage("Current time updated!", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::CRITICAL);
+		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 	}
 
-    while( xSDCardNotifyHandle == NULL || xSysMonNotifyHandle == NULL  || xGsmNotifyHandle == NULL);
+    while( xSDCardNotifyHandle == NULL || xSysMonNotifyHandle == NULL  || xSmsRxNotifyHandle == NULL || xSmsTxNotifyHandle == NULL || xWlsTxNotifyHandle == NULL);
     xTaskNotifyGive( xSDCardNotifyHandle);
 	xTaskNotifyGive( xSysMonNotifyHandle);
-	xTaskNotifyGive( xGsmNotifyHandle);
+	xTaskNotifyGive( xSmsRxNotifyHandle);
+	xTaskNotifyGive( xSmsTxNotifyHandle);
+	xTaskNotifyGive( xWlsTxNotifyHandle);
+	HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
 
-	//p_broker->publishData(recipient_t::google_home, "Pelargonia", { { "Soil moisture", 67}, { "is exposed", 0 } });
-
-	HAL_FatFs_Logger::publishLogMessage("Running", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::INFO);
+	HAL_FatFs_Logger::publishLogMessage("Running", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::INFO);
 
 	for( ;; )
 	{
-		if(!p_broker->sendMsg(recipient_t::google_home, "I'm alive!")){
-			HAL_FatFs_Logger::publishLogMessage("I'm alive! transmit failed!", wls_logs_box, reporter_t::Task_Wireless, log_msg_prio_t::CRITICAL);
-		}
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+		osDelay(1000);
+		//if (esp01s_msg_receiver->readData()){
+		//	IncomingMessage msg = esp01s_msg_receiver->getIncoming();
+		//}
+	}
+}
+
+void WirelessTransmitterTask(void const *argument)
+{
+	xWlsTxNotifyHandle = xTaskGetCurrentTaskHandle();
+	xTaskToNotifyFromUsart2Tx = xTaskGetCurrentTaskHandle();
+	wls_tx_logs_box = osMailCreate(osMailQ(wls_rx_logs_box), osThreadGetId());
+	constexpr uint32_t refresh_interval_msec = 500;
+
+	MsgBrokerPtr esp01s_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, esp01s_msg_len, &huart2);
+	JsonPubEncoder json_pub_serializer{};
+	JsonReqEncoder json_get_serializer{};
+	JsonMsgEncoder json_msg_serializer{};
+
+	esp01s_msg_transmitter->setDefaultEncoder(&json_pub_serializer);
+	esp01s_msg_transmitter->setInternalAddresses(&internal_entities);
+	esp01s_msg_transmitter->setExternalAddresses(&esp01s_external_addresses);
+	esp01s_msg_transmitter->sendMsg({ ExternalObject_t::google_home, 1 }, { InternalObject_t::sector, 0 }, "I'm alive", true, &json_msg_serializer);
+
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
+	HAL_FatFs_Logger::publishLogMessage("Running", wls_tx_logs_box, reporter_t::Task_WirelessTransmitter, log_msg_prio_t::INFO);
+
+
+	for( ;; )
+	{
+		//TODO: collect internal msg and pass to transmitter
+		esp01s_msg_transmitter->sendMsg({ ExternalObject_t::google_home, 1 }, { InternalObject_t::sector, 0 }, "I'm alive1", true, &json_msg_serializer);
 		osDelay(refresh_interval_msec);
 	}
 }
+
+void SmsReceiverTask(void const *argument)
+{
+	xSmsRxNotifyHandle = xTaskGetCurrentTaskHandle();
+    xTaskToNotifyFromUsart3Rx = xTaskGetCurrentTaskHandle();
+	const uint32_t refresh_interval_msec = 100;
+	sms_rx_logs_box = osMailCreate(osMailQ(sms_rx_logs_box), osThreadGetId());
+
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
+	HAL_FatFs_Logger::publishLogMessage("Running", sms_rx_logs_box, reporter_t::Task_SmsReceiver, log_msg_prio_t::INFO);
+
+	for( ;; )
+	{
+		//event-based
+		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+		osDelay(refresh_interval_msec);
+	}
+}
+
+void SmsTransmitterTask(void const *argument)
+{
+	constexpr uint32_t refresh_interval_msec = 1000;
+	xSmsTxNotifyHandle = xTaskGetCurrentTaskHandle();
+	 /* Store the handle of the calling task. */
+	xTaskToNotifyFromUsart3Tx = xTaskGetCurrentTaskHandle();
+	sms_tx_logs_box = osMailCreate(osMailQ(sms_tx_logs_box), osThreadGetId());
+
+	ulTaskNotifyTake( xTaskCount, osWaitForever);
+	HAL_FatFs_Logger::publishLogMessage("Running", sms_tx_logs_box, reporter_t::Task_SmsTransmitter, log_msg_prio_t::INFO);
+
+	for( ;; )
+	{
+		//TODO: collect internal msgs and send
+		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+		osDelay(refresh_interval_msec);
+	}
+}
+
 
 void IrrigationControlTask(void const *argument)
 {
@@ -465,7 +568,6 @@ void IrrigationControlTask(void const *argument)
 	bool time_set{false};
 
 	ulTaskNotifyTake( xTaskCount, osWaitForever);
-
 	HAL_FatFs_Logger::publishLogMessage("Running", irg_logs_box, reporter_t::Task_Irrigation, log_msg_prio_t::INFO);
 
 	//TODO: use director class for building sectors
@@ -476,11 +578,11 @@ void IrrigationControlTask(void const *argument)
 	
 	//TODO: looks like a function
 	osEvent evt{};
-	plant_config_msg *msg{nullptr};
+	PlantConfigMsg *msg{nullptr};
 	do{
 		evt = osMailGet(plants_config_box, 10);
 		if (evt.status == osEventMail){
-			msg = (plant_config_msg*)evt.value.p;
+			msg = (PlantConfigMsg*)evt.value.p;
 			if (msg->type == 1){
 				sector_builder[msg->sector_nbr].producePlantWithDMAMoistureSensor(msg->name, msg->rain_exposed);
 				std::string_view text = "S" + patch::to_string(static_cast<reporter_t>(msg->sector_nbr) + 1) + " got plant: " + msg->name;
@@ -555,24 +657,4 @@ void IrrigationControlTask(void const *argument)
 		osDelay(refresh_interval_msec);
 	}
 
-}
-
-void GsmTask(void const *argument)
-{
-	xGsmNotifyHandle = xTaskGetCurrentTaskHandle();
-	 /* Store the handle of the calling task. */
-    xTaskToNotifyFromUsart3Rx = xTaskGetCurrentTaskHandle();
-	xTaskToNotifyFromUsart3Tx = xTaskGetCurrentTaskHandle();
-	const uint32_t refresh_interval_msec = 1000;
-	gsm_logs_box = osMailCreate(osMailQ(gsm_logs_box), osThreadGetId());
-
-	ulTaskNotifyTake( xTaskCount, osWaitForever);
-
-	HAL_FatFs_Logger::publishLogMessage("Running", gsm_logs_box, reporter_t::Task_Gsm, log_msg_prio_t::INFO);
-
-	for( ;; )
-	{
-		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-		osDelay(refresh_interval_msec);
-	}
 }

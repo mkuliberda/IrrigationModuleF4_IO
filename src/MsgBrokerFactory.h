@@ -5,14 +5,14 @@
 #include "MsgBroker.h"
 #include <string_view>
 
-enum msg_broker_type_t {
-	hal_uart
+enum class MsgBrokerType {
+	hal_uart_dma
 };
 
 class MsgBrokerFactory
 {
 public:
-	static MsgBrokerPtr create(const msg_broker_type_t& _type, void* _devHandle=nullptr);
+	static MsgBrokerPtr create(const MsgBrokerType& _type, const size_t& _msg_in_len, void *_dev_handle=nullptr);
 };
 
 #endif

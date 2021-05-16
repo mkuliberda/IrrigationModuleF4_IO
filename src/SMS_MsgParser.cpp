@@ -1,10 +1,16 @@
-#include "SMS_MsgParser.h"
+#include "Sms_MsgParser.h"
 
-
-bool SMS_MsgParser::parseString(const std::string& _str) {
-    return true;    
+IncomingMessage Sms_MsgParser::parseIncoming(uint8_t* buffer, const size_t& _len)
+{
+	return {};
 }
 
-bool SMS_MsgParser::parseString(const std::string& _str, void(*action)(const std::string&)) {
-    return true;    
+bool Sms_MsgParser::parseString(const std::string& _str)
+{
+	return false;
+}
+
+bool Sms_MsgParser::parseString(const std::string& _str, void(*callback)(const std::string&))
+{
+	return false;
 }

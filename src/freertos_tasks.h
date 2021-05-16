@@ -32,17 +32,17 @@
 #define EXT_TIME_FORMAT "{\"NTP999>SYS000\":{\"CTD\":\"200914Mon185950\"}}" //Current Time Date
 #define EXT_TIME_STR_LEN (sizeof(EXT_TIME_FORMAT)-1)
 
-struct activity_msg{
+struct ActivityMsg{
 	uint8_t sector_nbr{};
 	activity_s activity{};
 };
 
-struct exception_msg{
+struct ExceptionMsg{
 	uint8_t sector_nbr{};
 	exception_s exception{};
 };
 
-struct plant_config_msg{
+struct PlantConfigMsg{
 	char	name[PLANT_NAME_LEN] = "";
 	uint8_t sector_nbr{};
 	bool	rain_exposed{};

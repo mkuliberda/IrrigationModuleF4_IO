@@ -1,17 +1,19 @@
-#ifndef ESP01S_MsgParser_H_
-#define ESP01S_MsgParser_H_
-
+#pragma once
 #include "MsgParser.h"
 
-class ESP01S_MsgParser: public MsgParser{
-public:
-    ESP01S_MsgParser() =default;
-    bool parseString(const std::string& _str) override;
-    bool parseString(const std::string& _str, void(*action)(const std::string&)) override;
+constexpr size_t esp01s_msg_len{ 24 };
 
-    ESP01S_MsgParser(ESP01S_MsgParser const &) = delete;
-	ESP01S_MsgParser& operator=(ESP01S_MsgParser const&) = delete;
-    ~ESP01S_MsgParser() =default;
+class Esp01s_MsgParser :
+	public MsgParser
+{
+public:
+	Esp01s_MsgParser() = default;
+	IncomingMessage parseIncoming(uint8_t *buffer, const size_t& _len) override;
+	bool parseString(const std::string& _str) override;
+	bool parseString(const std::string& _str, void(*callback)(const std::string&)) override;
+
+	Esp01s_MsgParser(Esp01s_MsgParser const &) = delete;
+	Esp01s_MsgParser& operator=(Esp01s_MsgParser const&) = delete;
+	~Esp01s_MsgParser() override =default;
 };
 
-#endif

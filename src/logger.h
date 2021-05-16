@@ -31,7 +31,7 @@
 #define TIME_STR_LEN 22
 #define LOG_FILE  "LOG.TXT" 
 
-#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_Wireless)C(Task_SysMonitor)C(Task_Gsm)C(Generic)
+#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_WirelessReceiver)C(Task_WirelessTransmitter)C(Task_SmsReceiver)C(Task_SmsTransmitter)C(Task_SysMonitor)C(Task_Gsm)C(Generic)
 #define C(x) x,
 enum reporter_t { REPORTERS TOP };
 #undef C
@@ -46,7 +46,7 @@ enum log_msg_prio_t : uint8_t {
 	CRITICAL
 };
 
-struct log_time {
+struct LogTime {
 	uint8_t hours{};
 	uint8_t minutes{};
 	uint8_t seconds{};
@@ -56,12 +56,12 @@ struct log_time {
 	uint16_t milliseconds{};
 };
 
-struct log_msg {
+struct LogMsg {
 	char 			text[LOG_TEXT_LEN]{};
 	uint8_t			len{};
 	reporter_t 		reporter_id{};
 	log_msg_prio_t  priority{};
-	log_time		time{};
+	LogTime		time{};
 };
 
 class HAL_FatFs_Logger
@@ -72,7 +72,7 @@ private:
 	std::string file_path{LOG_FILE};
 	const TCHAR log_format[LOG_FORMAT_LEN] = LOG_FORMAT;
 	const char time_format[TIME_FORMAT_LEN] = TIME_FORMAT;
-	std::vector<std::pair<std::string_view, log_msg*>> logs;
+	std::vector<std::pair<std::string_view, LogMsg*>> logs;
 
 	HAL_FatFs_Logger() = default;
 
@@ -82,7 +82,7 @@ public:
 	HAL_FatFs_Logger& operator =(const HAL_FatFs_Logger&) = delete;
 
 	static HAL_FatFs_Logger& createInstance();
-	void writeLog(log_msg *_msg, FIL *log_file);
+	void writeLog(LogMsg *_msg, FIL *log_file);
 	void writeLog(const std::string_view& _msg, FIL *log_file, const reporter_t& _reporter);
 	void changeFilePath(const std::string_view& _file_path);
 	void setMsgMaxLength(const uint32_t& _log_text_max_len);
