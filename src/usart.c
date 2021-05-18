@@ -201,9 +201,10 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
     __HAL_LINKDMA(uartHandle,hdmatx,hdma_usart3_tx);
 
-  /* USER CODE BEGIN USART3_MspInit 1 */
-
-  /* USER CODE END USART3_MspInit 1 */
+  /* USER CODE BEGIN USART2_MspInit 1 */
+    HAL_NVIC_SetPriority(USART3_IRQn, 8, 0);
+    HAL_NVIC_EnableIRQ(USART3_IRQn);
+  /* USER CODE END USART2_MspInit 1 */
   }
 }
 
@@ -273,7 +274,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       called portEND_SWITCHING_ISR(). */
       portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
   }
-  else if (huart->Instance == USART3){
+  if (huart->Instance == USART3){
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
       /* At this point xTaskToNotifyFromUsart3Rx should not be NULL as

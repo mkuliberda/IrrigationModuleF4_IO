@@ -6,13 +6,14 @@
 #include <string_view>
 
 enum class MsgBrokerType {
-	hal_uart_dma
+	hal_uart_dma,
+	hal_uart_dma_sim800l
 };
 
 class MsgBrokerFactory
 {
 public:
-	static MsgBrokerPtr create(const MsgBrokerType& _type, const size_t& _msg_in_len, void *_dev_handle=nullptr);
+	static MsgBrokerPtr create(const MsgBrokerType& _type, void *_dev_handle=nullptr);
 };
 
 #endif

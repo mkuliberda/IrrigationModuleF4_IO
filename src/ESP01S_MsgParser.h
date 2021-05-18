@@ -1,8 +1,6 @@
 #pragma once
 #include "MsgParser.h"
 
-constexpr size_t esp01s_msg_len{ 24 };
-
 class Esp01s_MsgParser :
 	public MsgParser
 {

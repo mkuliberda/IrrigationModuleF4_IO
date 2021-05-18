@@ -59,9 +59,9 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
   /* FPU initialization */
-	//SCB->CPACR |= ((3 << 10*2)|(3 << 11*2)); //TODO: check if FPU works with compile flags: -mfloat-abi=hard -fsingle-precision-constant -ffast-math -Wdouble-promotion 
+	//SCB->CPACR |= ((3 << 10*2)|(3 << 11*2)); //TODO: turn on FPU some of compile flags: -mfloat-abi=hard -fsingle-precision-constant -ffast-math -Wdouble-promotion 
   /* USER CODE END SysInit */
-
+  //TODO: adjust all priorites with HAL_NVIC_SetPriority
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ADC1_Init();

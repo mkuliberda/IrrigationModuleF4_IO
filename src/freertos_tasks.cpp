@@ -38,6 +38,8 @@ TaskHandle_t xSmsTxNotifyHandle = NULL;
 TaskHandle_t xWlsTxNotifyHandle = NULL;
 const UBaseType_t xTaskCount = 1;
 
+constexpr size_t esp01s_msg_len{ 24 };
+constexpr size_t sms_len{ 24 };
 
 osThreadId SysMonitorTaskHandle;
 osThreadId SDCardTaskHandle;
@@ -442,12 +444,13 @@ void WirelessReceiverTask(void const *argument)
     xTaskToNotifyFromUsart2Rx = xTaskGetCurrentTaskHandle();
 	wls_rx_logs_box = osMailCreate(osMailQ(wls_rx_logs_box), osThreadGetId());
 
-	MsgBrokerPtr esp01s_msg_receiver = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, esp01s_msg_len, &huart2);
+	MsgBrokerPtr esp01s_msg_receiver = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart2);
+	esp01s_msg_receiver->setMsgLength(esp01s_msg_len);
 	Esp01s_MsgParser esp01s_msg_parser;
 	esp01s_msg_receiver->setDefaultParser(&esp01s_msg_parser);
 	esp01s_msg_receiver->setInternalAddresses(&internal_entities);
 
-	esp01s_msg_receiver->readData();
+	esp01s_msg_receiver->read();
 	IncomingMessage msg = esp01s_msg_receiver->getIncoming();
 	if(msg.sender.object == ExternalObject_t::ntp_server && msg.recipient.object == InternalObject_t::system){
 		setRtcFromIncoming(msg);
@@ -466,8 +469,7 @@ void WirelessReceiverTask(void const *argument)
 
 	for( ;; )
 	{
-		//osDelay(1000);
-		if (esp01s_msg_receiver->readData()){
+		if (esp01s_msg_receiver->read()){
 			if(IncomingMessage msg = esp01s_msg_receiver->getIncoming(); msg.sender.object == ExternalObject_t::ntp_server && msg.recipient.object == InternalObject_t::system){
 				HAL_FatFs_Logger::publishLogMessage("Current time updated!", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::CRITICAL);
 				HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
@@ -483,7 +485,7 @@ void WirelessTransmitterTask(void const *argument)
 	wls_tx_logs_box = osMailCreate(osMailQ(wls_rx_logs_box), osThreadGetId());
 	constexpr uint32_t refresh_interval_msec = 500;
 
-	MsgBrokerPtr esp01s_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, esp01s_msg_len, &huart2);
+	MsgBrokerPtr esp01s_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart2);
 	JsonPubEncoder json_pub_serializer{};
 	JsonReqEncoder json_get_serializer{};
 	JsonMsgEncoder json_msg_serializer{};
@@ -509,17 +511,24 @@ void SmsReceiverTask(void const *argument)
 {
 	xSmsRxNotifyHandle = xTaskGetCurrentTaskHandle();
     xTaskToNotifyFromUsart3Rx = xTaskGetCurrentTaskHandle();
-	const uint32_t refresh_interval_msec = 100;
 	sms_rx_logs_box = osMailCreate(osMailQ(sms_rx_logs_box), osThreadGetId());
+
+	MsgBrokerPtr sms_receiver = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart3);
+	sms_receiver->setMsgLength(sms_len);
+	Sms_MsgParser sms_parser;
+	sms_receiver->setDefaultParser(&sms_parser);
+	sms_receiver->setInternalAddresses(&internal_entities);
 
 	ulTaskNotifyTake( xTaskCount, osWaitForever);
 	HAL_FatFs_Logger::publishLogMessage("Running", sms_rx_logs_box, reporter_t::Task_SmsReceiver, log_msg_prio_t::INFO);
 
 	for( ;; )
 	{
-		//event-based
-		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-		osDelay(refresh_interval_msec);
+		//osDelay(100);
+		if(sms_receiver->read()) {
+			IncomingMessage msg = sms_receiver->getIncoming();
+			//TODO: put into queue and distribute
+		}
 	}
 }
 
@@ -531,6 +540,13 @@ void SmsTransmitterTask(void const *argument)
 	xTaskToNotifyFromUsart3Tx = xTaskGetCurrentTaskHandle();
 	sms_tx_logs_box = osMailCreate(osMailQ(sms_tx_logs_box), osThreadGetId());
 
+	MsgBrokerPtr sms_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart3);
+	SmsMsgEncoder sms_msg_serializer{};
+
+	sms_msg_transmitter->setDefaultEncoder(&sms_msg_serializer);
+	sms_msg_transmitter->setInternalAddresses(&internal_entities);
+	sms_msg_transmitter->setExternalAddresses(&mobile_numbers);
+
 	ulTaskNotifyTake( xTaskCount, osWaitForever);
 	HAL_FatFs_Logger::publishLogMessage("Running", sms_tx_logs_box, reporter_t::Task_SmsTransmitter, log_msg_prio_t::INFO);
 
@@ -538,6 +554,7 @@ void SmsTransmitterTask(void const *argument)
 	{
 		//TODO: collect internal msgs and send
 		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
+		sms_msg_transmitter->sendMsg({ ExternalObject_t::my_phone, 1 }, { InternalObject_t::sector, 0 }, "I'm alive", true);
 		osDelay(refresh_interval_msec);
 	}
 }

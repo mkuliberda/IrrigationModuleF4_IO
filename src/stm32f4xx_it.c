@@ -198,5 +198,9 @@ void DMA2_Stream6_IRQHandler(void)
 void USART2_IRQHandler(void){
   HAL_UART_IRQHandler(&huart2);
 }
+
+void USART3_IRQHandler(void){
+  HAL_UART_IRQHandler(&huart3);
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

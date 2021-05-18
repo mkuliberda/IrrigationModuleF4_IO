@@ -6,7 +6,6 @@
 #include "MsgBroker.h"
 #include <iostream>
 #include <string>
-
 #include "stm32f4xx_hal.h"
 
 constexpr size_t buffer_size{ 64 };
@@ -16,8 +15,7 @@ class HAL_UART_DMA_MsgBroker :
 {
 public:
 
-	HAL_UART_DMA_MsgBroker(const size_t& _msg_in_len, void* _dev_handle):
-		msg_in_len(_msg_in_len)
+	HAL_UART_DMA_MsgBroker(void* _dev_handle)
 	{
 		if (_dev_handle != nullptr){
 		   uart_handle = static_cast<UART_HandleTypeDef*>(_dev_handle);
@@ -32,8 +30,9 @@ public:
 	bool setDefaultEncoder(Encoder *_encoder) override;
 	void setExternalAddresses(std::unordered_map<ExternalObject_t, std::string> *_addresses) override;
 	void setInternalAddresses(std::unordered_map<InternalObject_t, std::string> *_addresses) override;
-	bool readData(void(*action)(const std::string&)) override;
-	bool readData() override;
+	bool read() override;
+	bool setMsgLength(const size_t& _msg_len = -1) override;
+	size_t& getMsgLength() override;
 	IncomingMessage getIncoming(MsgParser *_parser = nullptr) override;
 	HAL_UART_DMA_MsgBroker(HAL_UART_DMA_MsgBroker const &) = delete;
 	HAL_UART_DMA_MsgBroker& operator=(HAL_UART_DMA_MsgBroker const&) = delete;
@@ -51,12 +50,7 @@ private:
 	MsgParser *parser{};
 	Encoder *encoder{};
 	bool dev_valid{false};
-	const size_t msg_in_len;
+	size_t msg_len;
 };
 
-
-
-
-
 #endif
-

@@ -128,24 +128,13 @@ void HAL_UART_DMA_MsgBroker::setInternalAddresses(std::unordered_map<InternalObj
 	int_address_map = _addresses;
 }
 
-bool HAL_UART_DMA_MsgBroker::readData(void(*action)(const std::string&)){
-	memset(rx_buffer, '\0', buffer_size);
-	if (dev_valid){
-		HAL_UART_Receive_DMA(uart_handle, rx_buffer, msg_in_len);
-	}
-	ulTaskNotifyTake( xArrayIndex, osWaitForever);
-	if(rx_buffer[0] == '{' && rx_buffer[msg_in_len -1] == '}'){
-		const std::string time_str{reinterpret_cast<char*>(rx_buffer)};
-		return true;// (parserInstance != nullptr) ? parserInstance->parseString(time_str, action) : false;
-	}
-	return false;
-}
+bool HAL_UART_DMA_MsgBroker::read(){
 
-bool HAL_UART_DMA_MsgBroker::readData(){
-	memset(rx_buffer, '\0', buffer_size);
-	if (dev_valid){
-		HAL_UART_Receive_DMA(uart_handle, rx_buffer, msg_in_len);
+	if (!dev_valid){
+		return false;
 	}
+	memset(rx_buffer, '\0', buffer_size);
+	HAL_UART_Receive_DMA(uart_handle, rx_buffer, msg_len);
 	ulTaskNotifyTake( xArrayIndex, osWaitForever);
 	return true;
 }
@@ -179,9 +168,18 @@ bool HAL_UART_DMA_MsgBroker::transmit(const std::string& _str, const bool& _bloc
 
 IncomingMessage HAL_UART_DMA_MsgBroker::getIncoming(MsgParser *_parser)
 {
-	if (_parser != nullptr) return _parser->parseIncoming(rx_buffer, msg_in_len);
-	else if( parser != nullptr)	return parser->parseIncoming(rx_buffer, msg_in_len);
+	if (_parser != nullptr) return _parser->parseIncoming(rx_buffer, msg_len);
+	else if( parser != nullptr)	return parser->parseIncoming(rx_buffer, msg_len);
 	return {};
+}
+
+bool HAL_UART_DMA_MsgBroker::setMsgLength(const size_t& _msg_len){
+	if (_msg_len < 0) return false; 
+	if (_msg_len >= 0) msg_len = _msg_len;
+	return true;
+}
+size_t& HAL_UART_DMA_MsgBroker::getMsgLength(){
+	return msg_len;
 }
 
 
