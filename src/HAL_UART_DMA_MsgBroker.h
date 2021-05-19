@@ -8,7 +8,8 @@
 #include <string>
 #include "stm32f4xx_hal.h"
 
-constexpr size_t buffer_size{ 64 };
+constexpr size_t uart_dma_tx_buffer_size{ 64 };
+constexpr size_t uart_dma_rx_buffer_size{ 64 };
 
 class HAL_UART_DMA_MsgBroker :
 	public MsgBroker
@@ -42,8 +43,8 @@ public:
 private:
 	bool transmit(const std::string& _str, const bool& _blocking_mode); 
 	UART_HandleTypeDef *uart_handle{};
-	uint8_t tx_buffer[buffer_size]{};
-	uint8_t rx_buffer[buffer_size]{};
+	uint8_t tx_buffer[uart_dma_tx_buffer_size]{};
+	uint8_t rx_buffer[uart_dma_rx_buffer_size]{};
 	std::unordered_map<ExternalObject_t, std::string> *ext_address_map{};
 	std::unordered_map<InternalObject_t, std::string> *int_address_map{};
 	IncomingMessage msg_in{};

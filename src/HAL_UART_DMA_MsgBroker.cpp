@@ -133,7 +133,7 @@ bool HAL_UART_DMA_MsgBroker::read(){
 	if (!dev_valid){
 		return false;
 	}
-	memset(rx_buffer, '\0', buffer_size);
+	memset(rx_buffer, '\0', uart_dma_rx_buffer_size);
 	HAL_UART_Receive_DMA(uart_handle, rx_buffer, msg_len);
 	ulTaskNotifyTake( xArrayIndex, osWaitForever);
 	return true;
@@ -146,13 +146,13 @@ bool HAL_UART_DMA_MsgBroker::transmit(const std::string& _str, const bool& _bloc
 	bool success = false;
 	success = false;
 	while(bytes_to_send > 0){
-		std::memset(tx_buffer, '\0', buffer_size);
-		_str.copy((char*)tx_buffer, SmallerOfTwo(bytes_to_send, buffer_size), pos);
+		std::memset(tx_buffer, '\0', uart_dma_tx_buffer_size);
+		_str.copy((char*)tx_buffer, SmallerOfTwo(bytes_to_send, uart_dma_tx_buffer_size), pos);
 		if (dev_valid){
-			if (HAL_UART_Transmit_DMA(uart_handle, tx_buffer, SmallerOfTwo(bytes_to_send, buffer_size)) == HAL_OK){
+			if (HAL_UART_Transmit_DMA(uart_handle, tx_buffer, SmallerOfTwo(bytes_to_send, uart_dma_tx_buffer_size)) == HAL_OK){
 				if (_blocking_mode)	ulTaskNotifyTake( xArrayIndex, osWaitForever);
-				bytes_to_send -= buffer_size;
-				pos += buffer_size;
+				bytes_to_send -= uart_dma_tx_buffer_size;
+				pos += uart_dma_tx_buffer_size;
 				success = true;
 				retries = 0;
 			}
