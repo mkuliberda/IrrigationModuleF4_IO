@@ -23,18 +23,19 @@
 #include "MsgBrokerFactory.h"
 #include "MsgEncoder.h"
 #include "SMS_MsgParser.h"
+#include "sim800l.h"
 
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
 extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
 extern TaskHandle_t xTaskToNotifyFromUsart3Rx;
-extern TaskHandle_t xTaskToNotifyFromUsart3Tx;
+//extern TaskHandle_t xTaskToNotifyFromUsart3Tx;
 extern const UBaseType_t xArrayIndex;
 
 TaskHandle_t xSDCardNotifyHandle = NULL;
 TaskHandle_t xSysMonNotifyHandle = NULL;
 TaskHandle_t xIrgCtrlNotifyHandle = NULL;
-TaskHandle_t xSmsRxNotifyHandle = NULL;
-TaskHandle_t xSmsTxNotifyHandle = NULL;
+TaskHandle_t xSmsRxTxNotifyHandle = NULL;
+//TaskHandle_t xSmsTxNotifyHandle = NULL;
 TaskHandle_t xWlsTxNotifyHandle = NULL;
 const UBaseType_t xTaskCount = 1;
 
@@ -46,8 +47,8 @@ osThreadId SDCardTaskHandle;
 osThreadId WirelessReceiverTaskHandle;
 osThreadId WirelessTransmitterTaskHandle;
 osThreadId IrrigationControlTaskHandle;
-osThreadId SmsReceiverTaskHandle;
-osThreadId SmsTransmitterTaskHandle;
+osThreadId SmsReceiverTransmitterTaskHandle;
+//osThreadId SmsTransmitterTaskHandle;
 
 osMailQId activities_box;
 osMailQDef(activities_box, 42, ActivityMsg);
@@ -63,12 +64,13 @@ osMailQId wls_rx_logs_box;
 osMailQDef(wls_rx_logs_box, 10, LogMsg);
 osMailQId wls_tx_logs_box;
 osMailQDef(wls_tx_logs_box, 10, LogMsg);
-osMailQId sms_rx_logs_box;
-osMailQDef(sms_rx_logs_box, 10, LogMsg);
-osMailQId sms_tx_logs_box;
-osMailQDef(sms_tx_logs_box, 10, LogMsg);
+osMailQId sms_rx_tx_logs_box;
+osMailQDef(sms_rx_tx_logs_box, 10, LogMsg);
+//osMailQId sms_tx_logs_box;
+//osMailQDef(sms_tx_logs_box, 10, LogMsg);
 osMailQId internal_msg_box;
 osMailQDef(internal_msg_box, 10, InternalMessage);
+
 
 using namespace std::chrono;
 
@@ -77,7 +79,7 @@ void SDCardTask(void const *argument);
 void WirelessReceiverTask(void const *argument);
 void WirelessTransmitterTask(void const *argument);
 void IrrigationControlTask(void const *argument);
-void SmsReceiverTask(void const *argument);
+void SmsReceiverTransmitterTask(void const *argument);
 void SmsTransmitterTask(void const *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -240,11 +242,11 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(wirelesstransmitterTask, WirelessTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
   WirelessTransmitterTaskHandle = osThreadCreate(osThread(wirelesstransmitterTask), NULL);
   
-  osThreadDef(smsreceiverTask, SmsReceiverTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
-  SmsReceiverTaskHandle = osThreadCreate(osThread(smsreceiverTask), NULL);
+  osThreadDef(smsreceivertransmitterTask, SmsReceiverTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  SmsReceiverTransmitterTaskHandle = osThreadCreate(osThread(smsreceivertransmitterTask), NULL);
   
-  osThreadDef(smstransmitterTask, SmsTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
-  SmsTransmitterTaskHandle = osThreadCreate(osThread(smstransmitterTask), NULL);
+  //osThreadDef(smstransmitterTask, SmsTransmitterTask, osPriority::osPriorityNormal, 0, 20*configMINIMAL_STACK_SIZE);
+  //SmsTransmitterTaskHandle = osThreadCreate(osThread(smstransmitterTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -270,7 +272,7 @@ void SysMonitorTask(void const * argument)
 	configSTACK_DEPTH_TYPE WirelessTxPrevStackHighWaterMark = 0;
 	configSTACK_DEPTH_TYPE IrrigationControlPrevStackHighWaterMark = 0;
 	configSTACK_DEPTH_TYPE SmsRxPrevStackHighWaterMark = 0;
-	configSTACK_DEPTH_TYPE SmsTxPrevStackHighWaterMark = 0;
+//	configSTACK_DEPTH_TYPE SmsTxPrevStackHighWaterMark = 0;
 	BaseType_t FreeStackSpace = 1;
 	eTaskState State = eInvalid;
 	sys_logs_box = osMailCreate(osMailQ(sys_logs_box), osThreadGetId());
@@ -312,17 +314,18 @@ void SysMonitorTask(void const * argument)
     		IrrigationControlPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
-		vTaskGetInfo(SmsReceiverTaskHandle, &TaskStatus, FreeStackSpace, State);
+		vTaskGetInfo(SmsReceiverTransmitterTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != SmsRxPrevStackHighWaterMark){
     		std::string_view msg =  "SmsRx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		SmsRxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
     	}
+		/*vTaskGetInfo(SmsTransmitterTaskHandle, &TaskStatus, FreeStackSpace, State);
     	if (TaskStatus.usStackHighWaterMark != SmsTxPrevStackHighWaterMark){
     		std::string_view msg =  "SmsTx HWMark:"+ patch::to_string(TaskStatus.usStackHighWaterMark * 2) + "b";
     		SmsTxPrevStackHighWaterMark = TaskStatus.usStackHighWaterMark;
     		HAL_FatFs_Logger::publishLogMessage(msg, sys_logs_box, reporter_t::Task_SysMonitor, log_msg_prio_t::HIGH);
-    	}
+    	}*/
 		osDelay(refresh_interval_msec);
 	}
 }
@@ -428,8 +431,8 @@ void SDCardTask(void const *argument)
 			logger.accumulateLogs(irg_logs_box);
 			logger.accumulateLogs(wls_rx_logs_box);
 			logger.accumulateLogs(wls_tx_logs_box);
-			logger.accumulateLogs(sms_rx_logs_box);
-			logger.accumulateLogs(sms_tx_logs_box);
+			logger.accumulateLogs(sms_rx_tx_logs_box);
+			//logger.accumulateLogs(sms_tx_logs_box);
 			logger.releaseLogsToFile(&log_file);
 		}
 
@@ -458,11 +461,11 @@ void WirelessReceiverTask(void const *argument)
 		HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
 	}
 
-    while( xSDCardNotifyHandle == NULL || xSysMonNotifyHandle == NULL  || xSmsRxNotifyHandle == NULL || xSmsTxNotifyHandle == NULL || xWlsTxNotifyHandle == NULL);
+    while( xSDCardNotifyHandle == NULL || xSysMonNotifyHandle == NULL  || xSmsRxTxNotifyHandle == NULL  || xWlsTxNotifyHandle == NULL);
     xTaskNotifyGive( xSDCardNotifyHandle);
 	xTaskNotifyGive( xSysMonNotifyHandle);
-	xTaskNotifyGive( xSmsRxNotifyHandle);
-	xTaskNotifyGive( xSmsTxNotifyHandle);
+	xTaskNotifyGive( xSmsRxTxNotifyHandle);
+	//xTaskNotifyGive( xSmsTxNotifyHandle);
 	xTaskNotifyGive( xWlsTxNotifyHandle);
 
 	HAL_FatFs_Logger::publishLogMessage("Running", wls_rx_logs_box, reporter_t::Task_WirelessReceiver, log_msg_prio_t::INFO);
@@ -507,40 +510,44 @@ void WirelessTransmitterTask(void const *argument)
 	}
 }
 
-void SmsReceiverTask(void const *argument)
+void SmsReceiverTransmitterTask(void const *argument)
 {
-	xSmsRxNotifyHandle = xTaskGetCurrentTaskHandle();
+	xSmsRxTxNotifyHandle = xTaskGetCurrentTaskHandle();
     xTaskToNotifyFromUsart3Rx = xTaskGetCurrentTaskHandle();
-	sms_rx_logs_box = osMailCreate(osMailQ(sms_rx_logs_box), osThreadGetId());
+	sms_rx_tx_logs_box = osMailCreate(osMailQ(sms_rx_tx_logs_box), osThreadGetId());
 
-	MsgBrokerPtr sms_receiver = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart3);
-	sms_receiver->setMsgLength(sms_len);
-	Sms_MsgParser sms_parser;
-	sms_receiver->setDefaultParser(&sms_parser);
-	sms_receiver->setInternalAddresses(&internal_entities);
+	LL_UART_DMA_SIM800L gsm_module;
+	gsm_module.configure();
+
+	MsgBrokerPtr sms_broker = MsgBrokerFactory::create(MsgBrokerType::ll_uart_dma_sim800l, USART3, &gsm_module);
+	Sms_MsgParser sms_parser{};
+	SmsMsgEncoder sms_serializer{};
+	sms_broker->setDefaultEncoder(&sms_serializer);
+	sms_broker->setDefaultParser(&sms_parser);
+	sms_broker->setInternalAddresses(&internal_entities);
+	sms_broker->setExternalAddresses(&mobile_numbers);
 
 	ulTaskNotifyTake( xTaskCount, osWaitForever);
-	HAL_FatFs_Logger::publishLogMessage("Running", sms_rx_logs_box, reporter_t::Task_SmsReceiver, log_msg_prio_t::INFO);
+	HAL_FatFs_Logger::publishLogMessage("Running", sms_rx_tx_logs_box, reporter_t::Task_SmsReceiverTransmitter, log_msg_prio_t::INFO);
 
 	for( ;; )
-	{
+	{		
 		//osDelay(100);
-		if(sms_receiver->read()) {
-			IncomingMessage msg = sms_receiver->getIncoming();
+		if(sms_broker->read()) {
+			IncomingMessage msg = sms_broker->getIncoming();
 			//TODO: put into queue and distribute
 		}
 	}
 }
 
-void SmsTransmitterTask(void const *argument)
+/*void SmsTransmitterTask(void const *argument)
 {
 	constexpr uint32_t refresh_interval_msec = 1000;
 	xSmsTxNotifyHandle = xTaskGetCurrentTaskHandle();
-	 /* Store the handle of the calling task. */
-	xTaskToNotifyFromUsart3Tx = xTaskGetCurrentTaskHandle();
+	//xTaskToNotifyFromUsart3Tx = xTaskGetCurrentTaskHandle();
 	sms_tx_logs_box = osMailCreate(osMailQ(sms_tx_logs_box), osThreadGetId());
 
-	MsgBrokerPtr sms_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, &huart3);
+	MsgBrokerPtr sms_msg_transmitter = MsgBrokerFactory::create(MsgBrokerType::hal_uart_dma, USART3);
 	SmsMsgEncoder sms_msg_serializer{};
 
 	sms_msg_transmitter->setDefaultEncoder(&sms_msg_serializer);
@@ -554,10 +561,10 @@ void SmsTransmitterTask(void const *argument)
 	{
 		//TODO: collect internal msgs and send
 		//HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-		sms_msg_transmitter->sendMsg({ ExternalObject_t::my_phone, 1 }, { InternalObject_t::sector, 0 }, "I'm alive", true);
+		//sms_msg_transmitter->sendMsg({ ExternalObject_t::my_phone, 1 }, { InternalObject_t::sector, 0 }, "I'm alive", true);
 		osDelay(refresh_interval_msec);
 	}
-}
+}*/
 
 
 void IrrigationControlTask(void const *argument)

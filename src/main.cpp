@@ -53,7 +53,7 @@ int main(void)
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
-
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
   /* Configure the system clock */
   SystemClock_Config();
 
@@ -71,7 +71,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   MX_DMA_Init();
-  MX_USART3_UART_Init();
+  LL_USART3_UART_Init();
   MX_USART2_UART_Init();
   MX_SDIO_SD_Init();
   MX_FATFS_Init();

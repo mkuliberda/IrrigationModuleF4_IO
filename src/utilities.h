@@ -16,6 +16,7 @@
 //TODO: defines deprecated, remove in future
 #define MINIMUM(a,b)            (((a) < (b)) ? (a) : (b))
 #define MAXIMUM(a,b)            (((a) < (b)) ? (b) : (a))
+#define ARRAY_LEN(x)            (sizeof(x) / sizeof((x)[0]))
 
 template <typename T1, typename T2>
 T1 SmallerOfTwo(T1& first, T2& second) { return first < second ? first : second; };
@@ -29,6 +30,9 @@ constexpr const T& clamp( const T& v, const T& lo, const T& hi )
     assert( !(hi < lo) );
     return (v < lo) ? lo : (hi < v) ? hi : v;
 }
+
+template<typename T>
+size_t ArrayLength(T *array){ return sizeof(array) > 0 ? sizeof(array) / sizeof(array[0]) : 0; }
 
 namespace patch
 {

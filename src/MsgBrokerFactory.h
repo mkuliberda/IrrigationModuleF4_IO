@@ -7,13 +7,13 @@
 
 enum class MsgBrokerType {
 	hal_uart_dma,
-	hal_uart_dma_at_cmds
+	ll_uart_dma_sim800l
 };
 
 class MsgBrokerFactory
 {
 public:
-	static MsgBrokerPtr create(const MsgBrokerType& _type, void *_dev_handle=nullptr);
+	static MsgBrokerPtr create(const MsgBrokerType& _type, void *_dev_handle=nullptr, void *_periph_handle=nullptr);
 };
 
 #endif

@@ -31,7 +31,7 @@
 #define TIME_STR_LEN 22
 #define LOG_FILE  "LOG.TXT" 
 
-#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_WirelessReceiver)C(Task_WirelessTransmitter)C(Task_SmsReceiver)C(Task_SmsTransmitter)C(Task_SysMonitor)C(Task_Gsm)C(Generic)
+#define REPORTERS C(Sector1)C(Sector2)C(Sector3)C(Sector4)C(Watertank1)C(Task_SDCard)C(Task_Irrigation)C(Task_WirelessReceiver)C(Task_WirelessTransmitter)C(Task_SmsReceiverTransmitter)C(Task_SysMonitor)C(Task_Gsm)C(Generic)
 #define C(x) x,
 enum reporter_t { REPORTERS TOP };
 #undef C

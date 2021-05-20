@@ -8,9 +8,14 @@ extern const UBaseType_t xArrayIndex;
 
 bool HAL_UART_DMA_MsgBroker::assignDevice(void *_dev_handle)
 {
-	if (_dev_handle == nullptr) return false;
-	uart_handle = static_cast<UART_HandleTypeDef*>(_dev_handle);
-	return dev_valid = true;
+	return false;
+}
+
+bool HAL_UART_DMA_MsgBroker::assignPeripheral(void *_periph_handle)
+{
+	if (_periph_handle == nullptr) return false;
+	uart_handle = static_cast<UART_HandleTypeDef*>(_periph_handle);
+	return periph_valid = true;
 }
 
 bool HAL_UART_DMA_MsgBroker::sendMsg(const ExternalObject& _recipient, const InternalObject& _publisher, const std::string& _msg, const bool& _wait_until_cplt, Encoder *_encoder)
@@ -130,7 +135,7 @@ void HAL_UART_DMA_MsgBroker::setInternalAddresses(std::unordered_map<InternalObj
 
 bool HAL_UART_DMA_MsgBroker::read(){
 
-	if (!dev_valid){
+	if (!periph_valid){
 		return false;
 	}
 	memset(rx_buffer, '\0', uart_dma_rx_buffer_size);
@@ -148,7 +153,7 @@ bool HAL_UART_DMA_MsgBroker::transmit(const std::string& _str, const bool& _bloc
 	while(bytes_to_send > 0){
 		std::memset(tx_buffer, '\0', uart_dma_tx_buffer_size);
 		_str.copy((char*)tx_buffer, SmallerOfTwo(bytes_to_send, uart_dma_tx_buffer_size), pos);
-		if (dev_valid){
+		if (periph_valid){
 			if (HAL_UART_Transmit_DMA(uart_handle, tx_buffer, SmallerOfTwo(bytes_to_send, uart_dma_tx_buffer_size)) == HAL_OK){
 				if (_blocking_mode)	ulTaskNotifyTake( xArrayIndex, osWaitForever);
 				bytes_to_send -= uart_dma_tx_buffer_size;
