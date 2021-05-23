@@ -23,7 +23,7 @@
 #include "MsgBrokerFactory.h"
 #include "MsgEncoder.h"
 #include "SMS_MsgParser.h"
-#include "sim800l.h"
+#include "ll_uart_dma_sim800l.h"
 
 extern TaskHandle_t xTaskToNotifyFromUsart2Rx;
 extern TaskHandle_t xTaskToNotifyFromUsart2Tx;
@@ -453,7 +453,7 @@ void WirelessReceiverTask(void const *argument)
 	esp01s_msg_receiver->setDefaultParser(&esp01s_msg_parser);
 	esp01s_msg_receiver->setInternalAddresses(&internal_entities);
 
-	esp01s_msg_receiver->read();
+	//esp01s_msg_receiver->read();
 	IncomingMessage msg = esp01s_msg_receiver->getIncoming();
 	if(msg.sender.object == ExternalObject_t::ntp_server && msg.recipient.object == InternalObject_t::system){
 		setRtcFromIncoming(msg);
@@ -519,7 +519,7 @@ void SmsReceiverTransmitterTask(void const *argument)
 	LL_UART_DMA_SIM800L gsm_module;
 	gsm_module.configure();
 
-	MsgBrokerPtr sms_broker = MsgBrokerFactory::create(MsgBrokerType::ll_uart_dma_sim800l, USART3, &gsm_module);
+	MsgBrokerPtr sms_broker = MsgBrokerFactory::create(MsgBrokerType::sim800l, nullptr, &gsm_module);
 	Sms_MsgParser sms_parser{};
 	SmsMsgEncoder sms_serializer{};
 	sms_broker->setDefaultEncoder(&sms_serializer);

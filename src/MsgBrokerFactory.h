@@ -7,7 +7,7 @@
 
 enum class MsgBrokerType {
 	hal_uart_dma,
-	ll_uart_dma_sim800l
+	sim800l
 };
 
 class MsgBrokerFactory
