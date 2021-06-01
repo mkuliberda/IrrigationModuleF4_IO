@@ -510,16 +510,21 @@ void WirelessTransmitterTask(void const *argument)
 	}
 }
 
+
 void SmsReceiverTransmitterTask(void const *argument)
 {
 	xSmsRxTxNotifyHandle = xTaskGetCurrentTaskHandle();
     xTaskToNotifyFromUsart3Rx = xTaskGetCurrentTaskHandle();
 	sms_rx_tx_logs_box = osMailCreate(osMailQ(sms_rx_tx_logs_box), osThreadGetId());
+	struct gpio_s sim800l_rst= { GPIOE, GPIO_PIN_0 }; //TODO: set this
+	struct gpio_s sim800l_ring= { GPIOE, GPIO_PIN_1 }; //TODO: set this
 
-	LL_UART_DMA_SIM800L gsm_module;
-	gsm_module.configure();
 
-	MsgBrokerPtr sms_broker = MsgBrokerFactory::create(MsgBrokerType::sim800l, nullptr, &gsm_module);
+	LL_UART_DMA_SIM800L gsm_module(USART3, sim800l_rst, sim800l_ring);
+	SIM800LConfiguration gsm_module_config(false, SIM800L_CharacterSet::IRA);
+	gsm_module.configure(&gsm_module_config);
+
+	MsgBrokerPtr sms_broker = MsgBrokerFactory::create(MsgBrokerType::sim800l, &gsm_module, nullptr);
 	Sms_MsgParser sms_parser{};
 	SmsMsgEncoder sms_serializer{};
 	sms_broker->setDefaultEncoder(&sms_serializer);

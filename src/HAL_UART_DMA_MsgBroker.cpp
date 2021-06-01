@@ -6,18 +6,6 @@
 
 extern const UBaseType_t xArrayIndex;
 
-bool HAL_UART_DMA_MsgBroker::assignDevice(void *_dev_handle)
-{
-	return false;
-}
-
-bool HAL_UART_DMA_MsgBroker::assignPeripheral(void *_periph_handle)
-{
-	if (_periph_handle == nullptr) return false;
-	uart_handle = static_cast<UART_HandleTypeDef*>(_periph_handle);
-	return periph_valid = true;
-}
-
 bool HAL_UART_DMA_MsgBroker::sendMsg(const ExternalObject& _recipient, const InternalObject& _publisher, const std::string& _msg, const bool& _wait_until_cplt, Encoder *_encoder)
 {
 	if (_publisher.id > 999 || _recipient.id > 999) return false;
@@ -183,7 +171,7 @@ bool HAL_UART_DMA_MsgBroker::setMsgLength(const size_t& _msg_len){
 	if (_msg_len >= 0) msg_len = _msg_len;
 	return true;
 }
-size_t& HAL_UART_DMA_MsgBroker::getMsgLength(){
+size_t HAL_UART_DMA_MsgBroker::getMsgLength() const {
 	return msg_len;
 }
 

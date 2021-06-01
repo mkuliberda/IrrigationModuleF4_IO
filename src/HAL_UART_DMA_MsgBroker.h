@@ -16,15 +16,13 @@ class HAL_UART_DMA_MsgBroker :
 {
 public:
 
-	HAL_UART_DMA_MsgBroker(void* _periph_handle)
+	explicit HAL_UART_DMA_MsgBroker(void* _periph_handle)
 	{
 		if (_periph_handle != nullptr){
 		   uart_handle = static_cast<UART_HandleTypeDef*>(_periph_handle);
 		   periph_valid = true;
 		}
     }
-	bool assignDevice(void* _dev_handle) override;
-	bool assignPeripheral(void* _periph_handle) override;
 	bool sendMsg(const ExternalObject& _recipient, const InternalObject& _publisher, const std::string& _msg, const bool& _wait_until_cplt, Encoder *_encoder = nullptr) override;
 	bool publishData(const ExternalObject& _recipient, const InternalObject& _publisher, std::unordered_map<std::string, int32_t> _values, const bool& _wait_until_cplt, Encoder *_encoder = nullptr) override;
 	bool requestData(const ExternalObject& _recipient, const InternalObject& _publisher, const std::string& _data_key, const std::string& _data_type, const bool& _wait_until_cplt, Encoder *_encoder = nullptr) override;
@@ -34,7 +32,7 @@ public:
 	void setInternalAddresses(std::unordered_map<InternalObject_t, std::string> *_addresses) override;
 	bool read() override;
 	bool setMsgLength(const size_t& _msg_len = -1) override;
-	size_t& getMsgLength() override;
+	size_t getMsgLength() const override;
 	IncomingMessage getIncoming(MsgParser *_parser = nullptr) override;
 	HAL_UART_DMA_MsgBroker(HAL_UART_DMA_MsgBroker const &) = delete;
 	HAL_UART_DMA_MsgBroker& operator=(HAL_UART_DMA_MsgBroker const&) = delete;
