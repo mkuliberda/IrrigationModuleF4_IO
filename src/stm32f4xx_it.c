@@ -80,6 +80,7 @@ extern TIM_HandleTypeDef htim6;
 extern UART_HandleTypeDef huart2;
 //extern UART_HandleTypeDef huart3;
 extern TaskHandle_t xTaskToNotifyFromUsart3Rx;
+extern TaskHandle_t xTaskToNotifyFromUsart3RxIdle;
 
 /* USER CODE BEGIN EV */
 

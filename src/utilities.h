@@ -19,10 +19,10 @@
 #define ARRAY_LEN(x)            (sizeof(x) / sizeof((x)[0]))
 
 template <typename T1, typename T2>
-T1 SmallerOfTwo(T1& first, T2& second) { return first < second ? first : second; };
+auto SmallerOfTwo(T1& first, T2& second) { return first < second ? first : second; };
 
 template <typename T1, typename T2>
-T1 BiggerOfTwo(T1& first, T2& second) { return first > second ? first : second; };
+auto BiggerOfTwo(T1& first, T2& second) { return first > second ? first : second; };
 
 template<typename T>
 constexpr const T& clamp( const T& v, const T& lo, const T& hi )

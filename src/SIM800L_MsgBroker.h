@@ -47,8 +47,6 @@ public:
 private:
 	UART_HandleTypeDef *uart_handle{};
 	GSMModule *dev_handle{};
-	//uint8_t tx_buffer[uart_dma_sim800l_tx_buffer_size]{};
-	//std::string rx_buffer{};
 	std::unordered_map<ExternalObject_t, std::string> *ext_address_map{};
 	std::unordered_map<InternalObject_t, std::string> *int_address_map{};
 	//IncomingMessage msg_in{};
@@ -57,7 +55,6 @@ private:
 	bool dev_valid{false};
 	bool periph_valid{false};
 	size_t msg_len{};
-	size_t old_pos;
 };
 
 #endif
